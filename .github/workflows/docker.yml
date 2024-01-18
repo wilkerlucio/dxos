@@ -39,6 +39,8 @@ jobs:
         shell: bash
         run: echo "DX_VERSION=$(cat package.json | jq -r .version)" >> $GITHUB_ENV
       # TODO(nf): build for arm64 as well, build currently hangs after install
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Install doctl 
@@ -88,6 +90,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
+          platforms: linux/amd64,linux/arm64
           target: agent
           tags: ${{ steps.agent-meta.outputs.tags }}
           build-args: |
@@ -103,6 +106,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
+          platforms: linux/amd64,linux/arm64
           target: composer-app
           tags: ${{ steps.composer-meta.outputs.tags }}
           build-args: |
