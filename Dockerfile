@@ -4,6 +4,7 @@ LABEL maintainer="DXOS Docker Maintainers <info@dxos.org>"
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NX_DAEMON=false
+ENV NX_VERBOSE_LOGGING=true
 ENV NODE_OPTIONS="--max_old_space_size=12288"
 
 RUN npm install -g pnpm@8.9.2
