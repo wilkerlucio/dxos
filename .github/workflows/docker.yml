@@ -43,6 +43,10 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            env.BUILDKIT_STEP_LOG_MAX_SIZE=-1
+            env.BUILDKIT_STEP_LOG_MAX_SPEED=-1
       - name: Install doctl 
         uses: digitalocean/action-doctl@v2
         with:
@@ -102,9 +106,6 @@ jobs:
             DX_TELEMETRY_API_KEY=${{ secrets.CLI_SEGMENT_API_KEY }}
             COMPOSER_DX_SENTRY_DESTINATION=${{ secrets.COMPOSER_APP_SENTRY_DESTINATION }}
             COMPOSER_DX_TELEMETRY_API_KEY=${{ secrets.COMPOSER_APP_SEGMENT_API_KEY }}
-          driver-opts: |
-            env.BUILDKIT_STEP_LOG_MAX_SIZE=-1
-            env.BUILDKIT_STEP_LOG_MAX_SPEED=-1
       - name: Build and push composer
         uses: docker/build-push-action@v5
         with:
