@@ -30,7 +30,7 @@ ENV DX_TELEMETRY_API_KEY=$DX_TELEMETRY_API_KEY
 ENV DX_BUILD_ROOT_DIR=/app
 ENV DX_COMMIT_HASH=$DX_COMMIT_HASH
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --reporter ndjson
 ENV NODE_ENV=production
 RUN pnpm build
 

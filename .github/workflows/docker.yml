@@ -90,7 +90,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           target: agent
           tags: ${{ steps.agent-meta.outputs.tags }}
           build-args: |
@@ -106,7 +106,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           target: composer-app
           tags: ${{ steps.composer-meta.outputs.tags }}
           build-args: |
