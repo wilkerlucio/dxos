@@ -24,7 +24,7 @@ import {
 } from '@dxos/protocols/proto/dxos/halo/credentials';
 import { Timeframe } from '@dxos/timeframe';
 import { trace as Trace } from '@dxos/tracing';
-import { deferFunction } from '@dxos/util';
+import { isNode, deferFunction } from '@dxos/util';
 
 import { createAuthProvider } from './authenticator';
 import { Identity } from './identity';
@@ -52,6 +52,7 @@ export type JoinIdentityParams = {
 
 export type CreateIdentityOptions = {
   displayName?: string;
+  deviceProfile?: DeviceProfileDocument;
 };
 
 // TODO(dmaretskyi): Rename: represents the peer's state machine.
@@ -89,6 +90,12 @@ export class IdentityManager {
         identityKey: identityRecord.identityKey,
         displayName: this._identity.profileDocument?.displayName,
       });
+      // TODO(nf): Needed for profile updates? Doesn't seem to work.
+      this._identity.stateUpdate.on(() => {
+        log('identityManager received identity.stateUpdate, forwarding');
+        this.stateUpdate.emit();
+      });
+
       this.stateUpdate.emit();
     }
     log.trace('dxos.halo.identity-manager.open', trace.end({ id: traceId }));
@@ -98,7 +105,19 @@ export class IdentityManager {
     await this._identity?.close(new Context());
   }
 
-  async createIdentity({ displayName }: CreateIdentityOptions = {}) {
+  async createIdentity({ displayName, deviceProfile }: CreateIdentityOptions = {}) {
+    // TODO(nf): populate using context from ServiceContext?
+    if (!deviceProfile) {
+      deviceProfile = {
+        type: isNode() ? DeviceProfileDocument.DeviceType.AGENT : DeviceProfileDocument.DeviceType.BROWSER,
+        label: 'initial identity device',
+        platform: platform.name,
+        platformVersion: platform.version,
+        architecture: typeof platform.os?.architecture === 'number' ? String(platform.os.architecture) : undefined,
+        os: platform.os?.family,
+        osVersion: platform.os?.version,
+      };
+    }
     invariant(!this._identity, 'Identity already exists.');
     log('creating identity...');
 
@@ -142,15 +161,7 @@ export class IdentityManager {
       credentials.push(await generator.createDeviceAuthorization(identityRecord.deviceKey));
 
       // Write device metadata to profile.
-      credentials.push(
-        await generator.createDeviceProfile({
-          platform: platform.name,
-          platformVersion: platform.version,
-          architecture: typeof platform.os?.architecture === 'number' ? String(platform.os.architecture) : undefined,
-          os: platform.os?.family,
-          osVersion: platform.os?.version,
-        }),
-      );
+      credentials.push(await generator.createDeviceProfile(deviceProfile));
       for (const credential of credentials) {
         await identity.controlPipeline.writer.write({
           credential: { credential },
