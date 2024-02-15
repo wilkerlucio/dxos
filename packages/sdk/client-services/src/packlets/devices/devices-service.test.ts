@@ -31,6 +31,7 @@ describe('DevicesService', () => {
     test.skip('updates device profile', async () => {
       const query = devicesService.queryDevices();
       const device = await devicesService.updateDevice({ label: 'test-device' });
+      log.info('device', device);
       const result = new Trigger<Device[] | undefined>();
       query.subscribe(({ devices }) => {
         result.wake(devices);

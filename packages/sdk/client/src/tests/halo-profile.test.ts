@@ -63,7 +63,7 @@ describe('Halo', () => {
     expect(await client2.halo.devices.get()).to.have.lengthOf(2);
   });
 
-  test.only('identity profile update is visible to other devices', async () => {
+  test('identity profile update is visible to other devices', async () => {
     const testBuilder = new TestBuilder();
 
     const client1 = new Client({ services: testBuilder.createLocal() });
