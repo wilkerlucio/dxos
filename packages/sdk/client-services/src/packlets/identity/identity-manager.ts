@@ -90,11 +90,6 @@ export class IdentityManager {
         identityKey: identityRecord.identityKey,
         displayName: this._identity.profileDocument?.displayName,
       });
-      // TODO(nf): Needed for profile updates? Doesn't seem to work.
-      this._identity.stateUpdate.on(() => {
-        log('identityManager received identity.stateUpdate, forwarding');
-        this.stateUpdate.emit();
-      });
 
       this.stateUpdate.emit();
     }
@@ -300,6 +295,11 @@ export class IdentityManager {
     if (identityRecord.haloSpace.controlTimeframe) {
       identity.controlPipeline.state.setTargetTimeframe(identityRecord.haloSpace.controlTimeframe);
     }
+
+    identity.stateUpdate.on(() => {
+      log('identityManager received identity.stateUpdate, forwarding');
+      this.stateUpdate.emit();
+    });
 
     return identity;
   }

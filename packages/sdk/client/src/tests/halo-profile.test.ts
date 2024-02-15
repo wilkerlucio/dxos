@@ -4,10 +4,9 @@
 
 import { expect } from 'chai';
 
-import { Trigger, asyncTimeout, sleep } from '@dxos/async';
+import { Trigger, asyncTimeout } from '@dxos/async';
 import { performInvitation } from '@dxos/client-services/testing';
 import { invariant } from '@dxos/invariant';
-import { log } from '@dxos/log';
 import { describe, test, afterTest } from '@dxos/test';
 
 import { Client } from '../client';
@@ -64,7 +63,7 @@ describe('Halo', () => {
     expect(await client2.halo.devices.get()).to.have.lengthOf(2);
   });
 
-  test.skip('profile update is visible to other devices', async () => {
+  test.only('identity profile update is visible to other devices', async () => {
     const testBuilder = new TestBuilder();
 
     const client1 = new Client({ services: testBuilder.createLocal() });
@@ -97,7 +96,7 @@ describe('Halo', () => {
     expect(client2.halo.identity.get()!.profile?.displayName).to.equal('test-user-updated');
   });
 
-  test.only('device profile update is visible to other devices', async () => {
+  test('device profile update is visible to other devices', async () => {
     const testBuilder = new TestBuilder();
 
     const client1 = new Client({ services: testBuilder.createLocal() });
