@@ -168,7 +168,6 @@ describe('identity/identity-manager', () => {
     const signalContext = new MemorySignalManagerContext();
 
     const peer = await setupPeer({ signalContext });
-
     const identity = await peer.identityManager.createIdentity();
 
     // Note: Waiting for device profile credential to be processed.
