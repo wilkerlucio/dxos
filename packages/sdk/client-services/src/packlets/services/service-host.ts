@@ -24,7 +24,7 @@ import { assignDeep } from '@dxos/util';
 import { WebsocketRpcClient } from '@dxos/websocket-rpc';
 
 import { createDiagnostics } from './diagnostics';
-import { ServiceContext } from './service-context';
+import { ServiceContext, type ServiceContextCreateIdentityOptions } from './service-context';
 import { ServiceRegistry } from './service-registry';
 import { DevicesServiceImpl } from '../devices';
 import { DevtoolsServiceImpl, DevtoolsHostEvents } from '../devtools';
@@ -337,7 +337,8 @@ export class ClientServicesHost {
   }
 
   private async _createIdentity(params: CreateIdentityOptions) {
-    const identity = await this._serviceContext.createIdentity(params);
+
+    const identity = await this._serviceContext.createIdentity(params as ServiceContextCreateIdentityOptions);
 
     // Setup default space.
     await this._serviceContext.initialized.wait();

@@ -13,7 +13,6 @@ import {
   ProfileStateMachine,
 } from '@dxos/credentials';
 import { type Signer } from '@dxos/crypto';
-import { failUndefined } from '@dxos/debug';
 import { type Space } from '@dxos/echo-pipeline';
 import { writeMessages } from '@dxos/feed-store';
 import { invariant } from '@dxos/invariant';
@@ -129,13 +128,6 @@ export class Identity {
     return this._deviceStateMachine.deviceCredentialChain;
   }
 
-  getAdmissionCredentials(): DeviceAdmissionRequest {
-    return {
-      deviceKey: this.deviceKey,
-      controlFeedKey: this.space.controlFeedKey ?? failUndefined(),
-      dataFeedKey: this.space.dataFeedKey ?? failUndefined(),
-    };
-  }
 
   /**
    * Issues credentials as identity.

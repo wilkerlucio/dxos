@@ -15,9 +15,19 @@ import {
   type RecoverIdentityRequest,
   type SignPresentationRequest,
 } from '@dxos/protocols/proto/dxos/client/services';
-import { type Presentation, type ProfileDocument } from '@dxos/protocols/proto/dxos/halo/credentials';
+import {
+  type Presentation,
+  type ProfileDocument,
+  type DeviceProfileDocument,
+} from '@dxos/protocols/proto/dxos/halo/credentials';
 
 import { type CreateIdentityOptions, type IdentityManager } from './identity-manager';
+
+// TODO(nf): dedupe
+export type CreateIdentityCallbackOptions = {
+  displayName?: string;
+  deviceProfile: DeviceProfileDocument;
+};
 
 export class IdentityServiceImpl implements IdentityService {
   constructor(
@@ -28,7 +38,7 @@ export class IdentityServiceImpl implements IdentityService {
   ) {}
 
   async createIdentity(request: CreateIdentityRequest): Promise<Identity> {
-    await this._createIdentity(request.profile ?? {});
+    await this._createIdentity({ displayName: request.profile?.displayName, deviceProfile: request.deviceProfile });
     return this._getIdentity()!;
   }
 

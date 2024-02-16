@@ -1,7 +1,6 @@
 //
 // Copyright 2022 DXOS.org
 //
-
 import platform from 'platform';
 
 import { Event } from '@dxos/async';
@@ -20,6 +19,7 @@ import { type IdentityRecord, type SpaceMetadata } from '@dxos/protocols/proto/d
 import {
   AdmittedFeed,
   type DeviceProfileDocument,
+  DeviceType,
   type ProfileDocument,
 } from '@dxos/protocols/proto/dxos/halo/credentials';
 import { Timeframe } from '@dxos/timeframe';
@@ -52,6 +52,14 @@ export type JoinIdentityParams = {
 
 export type CreateIdentityOptions = {
   displayName?: string;
+  // device profile for device creating the identity.
+  deviceProfile?: DeviceProfileDocument;
+};
+
+// TODO(nf): dedupe
+export type IdentityManagerCreateIdentityOptions = {
+  displayName?: string;
+  // device profile for device creating the identity.
   deviceProfile?: DeviceProfileDocument;
 };
 
@@ -100,19 +108,12 @@ export class IdentityManager {
     await this._identity?.close(new Context());
   }
 
-  async createIdentity({ displayName, deviceProfile }: CreateIdentityOptions = {}) {
-    // TODO(nf): populate using context from ServiceContext?
+  async createIdentity({ displayName, deviceProfile }: IdentityManagerCreateIdentityOptions = {}) {
     if (!deviceProfile) {
-      deviceProfile = {
-        type: isNode() ? DeviceProfileDocument.DeviceType.AGENT : DeviceProfileDocument.DeviceType.BROWSER,
-        label: 'initial identity device',
-        platform: platform.name,
-        platformVersion: platform.version,
-        architecture: typeof platform.os?.architecture === 'number' ? String(platform.os.architecture) : undefined,
-        os: platform.os?.family,
-        osVersion: platform.os?.version,
-      };
+      deviceProfile = this.createDeviceProfile({ context: CreateDeviceProfileContext.INITIAL_DEVICE });
     }
+
+    // TODO(nf): populate using context from ServiceContext?
     invariant(!this._identity, 'Identity already exists.');
     log('creating identity...');
 
@@ -179,6 +180,20 @@ export class IdentityManager {
 
     log('created identity', { identityKey: identity.identityKey, deviceKey: identity.deviceKey });
     return identity;
+  }
+
+  // Note: also exposed through DeviceService for clients to use.
+  // TODO(nf): receive platform info rather than generating it here.
+  async createDefaultDeviceProfile(): Promise<DeviceProfileDocument> {
+    return {
+      type: isNode() ? DeviceType.AGENT : DeviceType.BROWSER,
+      label: 'initial identity device',
+      platform: platform.name,
+      platformVersion: platform.version,
+      architecture: typeof platform.os?.architecture === 'number' ? String(platform.os.architecture) : undefined,
+      os: platform.os?.family,
+      osVersion: platform.os?.version,
+    };
   }
 
   /**

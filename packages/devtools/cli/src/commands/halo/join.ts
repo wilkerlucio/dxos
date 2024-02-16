@@ -4,7 +4,6 @@
 
 import { ux, Flags } from '@oclif/core';
 import chalk from 'chalk';
-import platform from 'platform';
 
 import { asyncTimeout, Trigger } from '@dxos/async';
 import { type Client } from '@dxos/client';
@@ -12,6 +11,7 @@ import { type Device } from '@dxos/client/halo';
 import { DeviceProfileDocument } from '@dxos/protocols/proto/dxos/halo/credentials';
 import { type Invitation, InvitationEncoder } from '@dxos/client/invitations';
 import { invariant } from '@dxos/invariant';
+import { DeviceType } from '@dxos/protocols/proto/dxos/halo/credentials';
 
 import { BaseCommand } from '../../base-command';
 import { acceptInvitation } from '../../util';
@@ -33,24 +33,19 @@ export default class Join extends BaseCommand<typeof Join> {
     label: Flags.string({
       description: 'Set device label',
     }),
+    managedAgent: Flags.boolean({ description: 'Managed agent', default: false }),
   };
 
   async run(): Promise<any> {
-    let { invitation: encoded, secret, label } = this.flags;
+    let { invitation: encoded, secret, label, managedAgent } = this.flags;
 
-    const updateDeviceProfile = async (client: Client, label?: string): Promise<Device> => {
+    const updateDeviceProfile = async (client: Client, managedAgent: boolean, label?: string): Promise<Device> => {
       invariant(client.services.services.DevicesService, 'DevicesService not found');
-      // TODO(nf): dedupe
-      const deviceProfile = await client.services.services.DevicesService.updateDevice({
-        label,
-        type: DeviceProfileDocument.DeviceType.AGENT,
-        platform: platform.name,
-        platformVersion: platform.version,
-        architecture: typeof platform.os?.architecture === 'number' ? String(platform.os.architecture) : undefined,
-        os: platform.os?.family,
-        osVersion: platform.os?.version,
-      });
-      return deviceProfile;
+      const deviceProfile = await client.services.services.DevicesService.createDeviceProfile({});
+      if (managedAgent) {
+        deviceProfile.type = DeviceType.AGENT_MANAGED;
+      }
+      return await client.services.services.DevicesService.updateDevice(deviceProfile);
     };
 
     return await this.execWithClient(async (client: Client) => {

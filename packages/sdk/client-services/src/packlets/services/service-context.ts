@@ -25,13 +25,17 @@ import { type NetworkManager } from '@dxos/network-manager';
 import { InvalidStorageVersionError, STORAGE_VERSION, trace } from '@dxos/protocols';
 import { Invitation } from '@dxos/protocols/proto/dxos/client/services';
 import type { FeedMessage } from '@dxos/protocols/proto/dxos/echo/feed';
-import { type ProfileDocument, type Credential } from '@dxos/protocols/proto/dxos/halo/credentials';
+import {
+  type ProfileDocument,
+  type Credential,
+  type DeviceProfileDocument,
+} from '@dxos/protocols/proto/dxos/halo/credentials';
 import { type Storage } from '@dxos/random-access-storage';
 import { BlobStore } from '@dxos/teleport-extension-object-sync';
 import { trace as Trace } from '@dxos/tracing';
 import { safeInstanceof } from '@dxos/util';
 
-import { type CreateIdentityOptions, IdentityManager, type JoinIdentityParams } from '../identity';
+import { IdentityManager, type JoinIdentityParams } from '../identity';
 import {
   DeviceInvitationProtocol,
   InvitationsHandler,
@@ -43,6 +47,13 @@ import { DataSpaceManager, type SigningContext } from '../spaces';
 /**
  * Shared backend for all client services.
  */
+
+// TODO(nf): dedupe
+export type ServiceContextCreateIdentityOptions = {
+  displayName?: string;
+  deviceProfile?: DeviceProfileDocument;
+};
+
 // TODO(burdon): Rename/break-up into smaller components. And/or make members private.
 // TODO(dmaretskyi): Gets duplicated in CJS build between normal and testing bundles.
 @safeInstanceof('dxos.client-services.ServiceContext')
@@ -162,10 +173,15 @@ export class ServiceContext {
     log('closed');
   }
 
-  async createIdentity(params: CreateIdentityOptions = {}) {
+  async createIdentity(params: ServiceContextCreateIdentityOptions = {}) {
     const identity = await this.identityManager.createIdentity(params);
     await this._initialize(new Context());
     return identity;
+  }
+
+  createDefaultDeviceProfile() {
+    // TODO(nf): pass platform info from SystemService?
+    return this.identityManager.createDeviceProfile();
   }
 
   getInvitationHandler(invitation: Partial<Invitation> & Pick<Invitation, 'kind'>): InvitationProtocol {

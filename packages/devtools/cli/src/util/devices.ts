@@ -5,14 +5,14 @@
 import { ux } from '@oclif/core';
 
 import { type Device } from '@dxos/client/halo';
-import { DeviceProfileDocument } from '@dxos/protocols/proto/dxos/halo/credentials';
+import { DeviceType } from '@dxos/protocols/proto/dxos/halo/credentials';
 
 import { maybeTruncateKey } from './types';
 
 export const mapDevices = (devices: Device[], truncateKeys = false) => {
   return devices.map((device) => ({
     label: device.profile?.label,
-    type: device.profile?.type ? DeviceProfileDocument.DeviceType[device.profile?.type] : 'UNKNOWN',
+    type: device.profile?.type ? DeviceType[device.profile?.type] : 'UNKNOWN',
     key: maybeTruncateKey(device.deviceKey, truncateKeys),
     kind: device.kind,
     platform: device.profile?.platform,

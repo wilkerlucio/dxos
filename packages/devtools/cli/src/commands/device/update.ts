@@ -41,7 +41,7 @@ export default class Update extends BaseCommand<typeof Update> {
       // TODO(nf): dedupe
       const uDevice = await client.services.services.DevicesService.updateDevice({
         label,
-        type: DeviceProfileDocument.DeviceType.AGENT,
+        type: DeviceType.AGENT,
         platform: platform.name,
         platformVersion: platform.version,
         architecture: typeof platform.os?.architecture === 'number' ? String(platform.os.architecture) : undefined,
