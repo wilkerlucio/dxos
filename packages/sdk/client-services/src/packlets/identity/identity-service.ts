@@ -74,6 +74,12 @@ export class IdentityServiceImpl implements IdentityService {
     return this._getIdentity()!;
   }
 
+  // set device profile used for when joining existing identity.
+  async setCurrentDeviceProfile(profile: DeviceProfileDocument) {
+    invariant(this._identityManager, 'Identity not initialized.');
+    this._identityManager.currentDeviceProfile = profile;
+  }
+
   async signPresentation({ presentation, nonce }: SignPresentationRequest): Promise<Presentation> {
     invariant(this._identityManager.identity, 'Identity not initialized.');
 

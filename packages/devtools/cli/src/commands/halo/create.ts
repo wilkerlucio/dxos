@@ -6,6 +6,7 @@ import { Args, Flags } from '@oclif/core';
 
 import { type Client } from '@dxos/client';
 import { invariant } from '@dxos/invariant';
+import { CreateDeviceProfileContext } from '@dxos/protocols/proto/dxos/client/services';
 import { DeviceType } from '@dxos/protocols/proto/dxos/halo/credentials';
 
 import { BaseCommand } from '../../base-command';
@@ -33,7 +34,9 @@ export default class Create extends BaseCommand<typeof Create> {
         this.log('Identity already initialized.');
       } else {
         invariant(client.services.services.DevicesService, 'DevicesService not available.');
-        const deviceProfile = await client.services.services.DevicesService.createDeviceProfile({});
+        const deviceProfile = await client.services.services.DevicesService.createDeviceProfile({
+          context: CreateDeviceProfileContext.INITIAL_DEVICE,
+        });
         if (managedAgent) {
           deviceProfile.type = DeviceType.AGENT_MANAGED;
         }

@@ -147,6 +147,7 @@ service IdentityService {
   rpc QueryIdentity(google.protobuf.Empty) returns (stream QueryIdentityResponse);
   rpc UpdateProfile(halo.credentials.ProfileDocument) returns (Identity);
   rpc SignPresentation(SignPresentationRequest) returns (dxos.halo.credentials.Presentation);
+  rpc SetCurrentDeviceProfile(halo.credentials.DeviceProfileDocument) returns (google.protobuf.Empty);
 }
 
 //
@@ -169,10 +170,14 @@ message QueryDevicesResponse {
   repeated Device devices = 1;
 }
 
+enum CreateDeviceProfileContext {
+  INITIAL_DEVICE = 0;
+  ADDITIONAL_DEVICE = 1;
+}
 message CreateDeviceProfileRequest {
+  optional CreateDeviceProfileContext context = 1;
   /// Override the default device profile, takes precedence over device_type.
-  optional halo.credentials.DeviceProfileDocument profile = 1;
-  optional halo.credentials.DeviceType device_type = 2;
+  optional halo.credentials.DeviceProfileDocument profile = 2;
 }
 
 service DevicesService {

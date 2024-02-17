@@ -13,7 +13,7 @@ import { type Keyring } from '@dxos/keyring';
 import { PublicKey } from '@dxos/keys';
 import { log } from '@dxos/log';
 import { trace } from '@dxos/protocols';
-import { type Device, DeviceKind } from '@dxos/protocols/proto/dxos/client/services';
+import { type Device, DeviceKind, CreateDeviceProfileContext } from '@dxos/protocols/proto/dxos/client/services';
 import { type FeedMessage } from '@dxos/protocols/proto/dxos/echo/feed';
 import { type IdentityRecord, type SpaceMetadata } from '@dxos/protocols/proto/dxos/echo/metadata';
 import {
@@ -69,6 +69,8 @@ export class IdentityManager {
   readonly stateUpdate = new Event();
 
   private _identity?: Identity;
+  // hack to set device profile after joining an existing identity.
+  currentDeviceProfile?: DeviceProfileDocument;
 
   // TODO(burdon): IdentityManagerParams.
   // TODO(dmaretskyi): Perhaps this should take/generate the peerKey outside of an initialized identity.
@@ -184,16 +186,24 @@ export class IdentityManager {
 
   // Note: also exposed through DeviceService for clients to use.
   // TODO(nf): receive platform info rather than generating it here.
-  async createDefaultDeviceProfile(): Promise<DeviceProfileDocument> {
-    return {
+  createDeviceProfile({
+    context,
+    deviceProfileOverride,
+  }: {
+    context?: CreateDeviceProfileContext;
+    deviceProfileOverride?: Partial<DeviceProfileDocument>;
+  } = {}): DeviceProfileDocument {
+    const defaultDeviceProfile = {
       type: isNode() ? DeviceType.AGENT : DeviceType.BROWSER,
-      label: 'initial identity device',
+      label: context === CreateDeviceProfileContext.INITIAL_DEVICE ? 'initial identity device' : 'additional device',
       platform: platform.name,
       platformVersion: platform.version,
       architecture: typeof platform.os?.architecture === 'number' ? String(platform.os.architecture) : undefined,
       os: platform.os?.family,
       osVersion: platform.os?.version,
     };
+
+    return { ...defaultDeviceProfile, ...deviceProfileOverride };
   }
 
   /**
@@ -224,6 +234,13 @@ export class IdentityManager {
       identityKey: identityRecord.identityKey,
       displayName: this._identity.profileDocument?.displayName,
     });
+
+    if (!this.currentDeviceProfile) {
+      this.currentDeviceProfile = this.createDeviceProfile({
+        context: CreateDeviceProfileContext.ADDITIONAL_DEVICE,
+      });
+    }
+    await this.updateDeviceProfile(this.currentDeviceProfile!);
 
     this.stateUpdate.emit();
     log('accepted identity', { identityKey: identity.identityKey, deviceKey: identity.deviceKey });

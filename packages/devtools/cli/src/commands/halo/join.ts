@@ -2,7 +2,7 @@
 // Copyright 2023 DXOS.org
 //
 
-import { ux, Flags } from '@oclif/core';
+import { Flags, ux } from '@oclif/core';
 import chalk from 'chalk';
 
 import { asyncTimeout, Trigger } from '@dxos/async';
@@ -11,6 +11,7 @@ import { type Device } from '@dxos/client/halo';
 import { DeviceProfileDocument } from '@dxos/protocols/proto/dxos/halo/credentials';
 import { type Invitation, InvitationEncoder } from '@dxos/client/invitations';
 import { invariant } from '@dxos/invariant';
+import { CreateDeviceProfileContext } from '@dxos/protocols/proto/dxos/client/services';
 import { DeviceType } from '@dxos/protocols/proto/dxos/halo/credentials';
 
 import { BaseCommand } from '../../base-command';
@@ -39,14 +40,6 @@ export default class Join extends BaseCommand<typeof Join> {
   async run(): Promise<any> {
     let { invitation: encoded, secret, label, managedAgent } = this.flags;
 
-    const updateDeviceProfile = async (client: Client, managedAgent: boolean, label?: string): Promise<Device> => {
-      invariant(client.services.services.DevicesService, 'DevicesService not found');
-      const deviceProfile = await client.services.services.DevicesService.createDeviceProfile({});
-      if (managedAgent) {
-        deviceProfile.type = DeviceType.AGENT_MANAGED;
-      }
-      return await client.services.services.DevicesService.updateDevice(deviceProfile);
-    };
 
     return await this.execWithClient(async (client: Client) => {
       if (client.halo.identity.get()) {
@@ -60,6 +53,21 @@ export default class Join extends BaseCommand<typeof Join> {
         const searchParams = new URLSearchParams(encoded.substring(encoded.lastIndexOf('?')));
         encoded = searchParams.get('deviceInvitationCode') ?? encoded;
       }
+
+      invariant(client.services.services.DevicesService, 'DevicesService not found');
+      const deviceProfile = await client.services.services.DevicesService.createDeviceProfile({
+        context: CreateDeviceProfileContext.ADDITIONAL_DEVICE,
+      });
+
+      if (label) {
+        deviceProfile.label = label;
+      }
+
+      if (managedAgent) {
+        deviceProfile.type = DeviceType.AGENT_MANAGED;
+      }
+
+      await client.services.IdentityService.setCurrentDeviceProfile(deviceProfile);
 
       ux.log('');
       ux.action.start('Waiting for peer to connect');

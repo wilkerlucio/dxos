@@ -7,6 +7,7 @@ import { expect } from 'chai';
 import { Trigger, asyncTimeout } from '@dxos/async';
 import { performInvitation } from '@dxos/client-services/testing';
 import { invariant } from '@dxos/invariant';
+import { DeviceKind } from '@dxos/protocols/proto/dxos/client/services';
 import { describe, test, afterTest } from '@dxos/test';
 
 import { Client } from '../client';
@@ -63,7 +64,8 @@ describe('Halo', () => {
     afterTest(() => client1.destroy());
     await client1.initialize();
 
-    await client1.halo.createIdentity({ displayName: 'test-user' });
+    // Set a custom device profile for the host to ensure we're matching the default on the guest.
+    await client1.halo.createIdentity({ displayName: 'test-user' }, { label: 'host-device-profile' });
     expect(client1.halo.identity).exist;
 
     expect(await client1.halo.devices.get()).to.have.lengthOf(1);
@@ -72,10 +74,67 @@ describe('Halo', () => {
     afterTest(() => client2.destroy());
     await client2.initialize();
 
+    const defaultDeviceProfile = await client2.services.services?.DevicesService?.createDeviceProfile({});
+    expect(defaultDeviceProfile).exist;
+    const trigger = new Trigger();
+    client1.halo.devices.subscribe((devices) => {
+      // TODO(nf): deepEquals?
+      if (
+        devices.find((device) => device.deviceKey !== client1.halo.device?.deviceKey)?.profile?.label ===
+        defaultDeviceProfile!.label
+      ) {
+        trigger.wake();
+      }
+    });
+
     await Promise.all(performInvitation({ host: client1.halo, guest: client2.halo }));
 
     expect(await client1.halo.devices.get()).to.have.lengthOf(2);
     expect(await client2.halo.devices.get()).to.have.lengthOf(2);
+    expect(client2.halo.device?.profile?.label).to.equal(defaultDeviceProfile!.label);
+    await trigger.wait();
+    const client2DeviceOnClient1 = client1.halo.devices.get().find((device) => device.kind !== DeviceKind.CURRENT);
+    expect(client2DeviceOnClient1).exist;
+    expect(client2DeviceOnClient1?.profile?.label).to.equal(defaultDeviceProfile!.label);
+  });
+
+  test('device invitation with custom guest device profile', async () => {
+    const testBuilder = new TestBuilder();
+
+    const client1 = new Client({ services: testBuilder.createLocal() });
+    afterTest(() => client1.destroy());
+    await client1.initialize();
+
+    await client1.halo.createIdentity({ displayName: 'test-user' });
+    expect(client1.halo.identity).exist;
+
+    expect(await client1.halo.devices.get()).to.have.lengthOf(1);
+
+    const client2 = new Client({ services: testBuilder.createLocal() });
+    afterTest(() => client2.destroy());
+    await client2.initialize();
+    // TODO(nf): how to test halo.join() more directly?
+    await client2.services.services?.IdentityService?.setCurrentDeviceProfile({ label: 'guest-device-profile' });
+
+    const trigger = new Trigger();
+    client1.halo.devices.subscribe((devices) => {
+      if (
+        devices.find((device) => device.deviceKey !== client1.halo.device?.deviceKey)?.profile?.label ===
+        'guest-device-profile'
+      ) {
+        trigger.wake();
+      }
+    });
+
+    await Promise.all(performInvitation({ host: client1.halo, guest: client2.halo }));
+
+    expect(await client1.halo.devices.get()).to.have.lengthOf(2);
+    expect(await client2.halo.devices.get()).to.have.lengthOf(2);
+    expect(client2.halo.device?.profile?.label).to.equal('guest-device-profile');
+    await trigger.wait();
+    expect(client1.halo.devices.get().find((device) => device.kind !== DeviceKind.CURRENT)?.profile?.label).to.equal(
+      'guest-device-profile',
+    );
   });
 
   test('identity profile update is visible to other devices', async () => {
