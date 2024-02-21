@@ -66,7 +66,8 @@ export default class Join extends BaseCommand<typeof Join> {
         deviceProfile.type = DeviceType.AGENT_MANAGED;
       }
 
-      await client.services.IdentityService.setCurrentDeviceProfile(deviceProfile);
+      invariant(client.services.services.IdentityService);
+      await client.services.services.IdentityService.setCurrentDeviceProfile(deviceProfile);
 
       ux.log('');
       ux.action.start('Waiting for peer to connect');
