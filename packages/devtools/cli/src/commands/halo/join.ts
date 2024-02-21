@@ -40,7 +40,6 @@ export default class Join extends BaseCommand<typeof Join> {
   async run(): Promise<any> {
     let { invitation: encoded, secret, label, managedAgent } = this.flags;
 
-
     return await this.execWithClient(async (client: Client) => {
       if (client.halo.identity.get()) {
         this.error(chalk`{red Profile already initialized.}`);
