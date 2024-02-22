@@ -72,10 +72,6 @@ export const createIdentity = async (peer: ServiceContext) => {
   return peer;
 };
 
-// export const createDeviceProfile = (peer: ServiceContext) => {
-//   return peer.createDefaultDeviceProfile();
-// };
-
 // TODO(burdon): Remove @dxos/client-testing.
 // TODO(burdon): Create builder and make configurable.
 export const syncItemsLocal = async (db1: DataPipeline, db2: DataPipeline) => {
