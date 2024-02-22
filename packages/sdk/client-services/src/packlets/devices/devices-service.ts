@@ -60,7 +60,7 @@ export class DevicesServiceImpl implements DevicesService {
     });
   }
 
-  async createDeviceProfile({ context, profile }: CreateDeviceProfileRequest): Promise<DeviceProfileDocument> {
-    return this._identityManager.createDeviceProfile({ context, deviceProfileOverride: profile });
+  async createDeviceProfile({ context, profileOverride }: CreateDeviceProfileRequest): Promise<DeviceProfileDocument> {
+    return this._identityManager.createDeviceProfile({ context, deviceProfileOverride: profileOverride });
   }
 }
