@@ -193,8 +193,22 @@ export class IdentityManager {
     context?: CreateDeviceProfileContext;
     deviceProfileOverride?: Partial<DeviceProfileDocument>;
   } = {}): DeviceProfileDocument {
+    let type: DeviceType;
+    // TODO(nf): call Platform service instead?
+    if (isNode()) {
+      type = DeviceType.AGENT;
+    } else {
+      if (platform.name?.startsWith('iOS') || platform.name?.startsWith('Android')) {
+        type = DeviceType.MOBILE;
+      } else if ((globalThis as any).__args) {
+        type = deviceType.NATIVE;
+      } else {
+        type = DeviceType.BROWSER;
+      }
+    }
+
     const defaultDeviceProfile = {
-      type: isNode() ? DeviceType.AGENT : DeviceType.BROWSER,
+      type,
       label: context === CreateDeviceProfileContext.INITIAL_DEVICE ? 'initial identity device' : 'additional device',
       platform: platform.name,
       platformVersion: platform.version,
