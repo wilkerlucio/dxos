@@ -43,8 +43,6 @@ import { DataSpaceManager, type SigningContext } from '../spaces';
 /**
  * Shared backend for all client services.
  */
-
-
 // TODO(burdon): Rename/break-up into smaller components. And/or make members private.
 // TODO(dmaretskyi): Gets duplicated in CJS build between normal and testing bundles.
 @safeInstanceof('dxos.client-services.ServiceContext')
@@ -169,7 +167,6 @@ export class ServiceContext {
     await this._initialize(new Context());
     return identity;
   }
-
 
   getInvitationHandler(invitation: Partial<Invitation> & Pick<Invitation, 'kind'>): InvitationProtocol {
     const factory = this._handlerFactories.get(invitation.kind);
