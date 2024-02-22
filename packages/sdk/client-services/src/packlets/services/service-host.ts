@@ -337,7 +337,6 @@ export class ClientServicesHost {
   }
 
   private async _createIdentity(params: CreateIdentityOptions) {
-
     const identity = await this._serviceContext.createIdentity(params);
 
     // Setup default space.
