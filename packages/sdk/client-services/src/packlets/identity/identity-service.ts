@@ -23,12 +23,6 @@ import {
 
 import { type CreateIdentityOptions, type IdentityManager } from './identity-manager';
 
-// TODO(nf): dedupe
-export type CreateIdentityCallbackOptions = {
-  displayName?: string;
-  deviceProfile: DeviceProfileDocument;
-};
-
 export class IdentityServiceImpl implements IdentityService {
   constructor(
     private readonly _createIdentity: (params: CreateIdentityOptions) => Promise<Identity>,

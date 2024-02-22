@@ -56,12 +56,6 @@ export type CreateIdentityOptions = {
   deviceProfile?: DeviceProfileDocument;
 };
 
-// TODO(nf): dedupe
-export type IdentityManagerCreateIdentityOptions = {
-  displayName?: string;
-  // device profile for device creating the identity.
-  deviceProfile?: DeviceProfileDocument;
-};
 
 // TODO(dmaretskyi): Rename: represents the peer's state machine.
 @Trace.resource()
@@ -110,7 +104,8 @@ export class IdentityManager {
     await this._identity?.close(new Context());
   }
 
-  async createIdentity({ displayName, deviceProfile }: IdentityManagerCreateIdentityOptions = {}) {
+  async createIdentity({ displayName, deviceProfile }: CreateIdentityOptions = {}) {
+    // If no device profile is supplied when asked to create identity, create one from defaults.
     if (!deviceProfile) {
       deviceProfile = this.createDeviceProfile({ context: CreateDeviceProfileContext.INITIAL_DEVICE });
     }
