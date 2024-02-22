@@ -31,6 +31,7 @@ export default class Join extends BaseCommand<typeof Join> {
     timeout: Flags.integer({
       description: 'Timeout in seconds',
       default: 300,
+    }),
     label: Flags.string({
       description: 'Set device label',
     }),
