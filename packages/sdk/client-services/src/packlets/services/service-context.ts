@@ -179,10 +179,6 @@ export class ServiceContext {
     return identity;
   }
 
-  createDefaultDeviceProfile() {
-    // TODO(nf): pass platform info from SystemService?
-    return this.identityManager.createDeviceProfile();
-  }
 
   getInvitationHandler(invitation: Partial<Invitation> & Pick<Invitation, 'kind'>): InvitationProtocol {
     const factory = this._handlerFactories.get(invitation.kind);

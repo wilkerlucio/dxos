@@ -111,9 +111,13 @@ export class HaloProxy implements Halo {
     // const gotContacts = this._contactsChanged.waitForCount(1);
 
     invariant(this._serviceProvider.services.InvitationsService, 'InvitationsService not available');
-    this._invitationProxy = new InvitationsProxy(this._serviceProvider.services.InvitationsService, () => ({
-      kind: Invitation.Kind.DEVICE,
-    }));
+    this._invitationProxy = new InvitationsProxy(
+      this._serviceProvider.services.InvitationsService,
+      this._serviceProvider.services.IdentityService,
+      () => ({
+        kind: Invitation.Kind.DEVICE,
+      }),
+    );
     await this._invitationProxy.open();
 
     invariant(this._serviceProvider.services.IdentityService, 'IdentityService not available');

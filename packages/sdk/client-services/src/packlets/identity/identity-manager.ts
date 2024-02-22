@@ -191,7 +191,7 @@ export class IdentityManager {
     deviceProfileOverride,
   }: {
     context?: CreateDeviceProfileContext;
-    deviceProfileOverride?: Partial<DeviceProfileDocument>;
+    deviceProfileOverride?: DeviceProfileDocument;
   } = {}): DeviceProfileDocument {
     let type: DeviceType;
     // TODO(nf): call Platform service instead?

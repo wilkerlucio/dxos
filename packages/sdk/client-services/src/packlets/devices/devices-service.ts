@@ -60,7 +60,6 @@ export class DevicesServiceImpl implements DevicesService {
     });
   }
 
-  // TODO(nf): access through IdentityService?
   async createDeviceProfile({ context, profile }: CreateDeviceProfileRequest): Promise<DeviceProfileDocument> {
     return this._identityManager.createDeviceProfile({ context, deviceProfileOverride: profile });
   }

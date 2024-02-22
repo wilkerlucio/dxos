@@ -176,8 +176,8 @@ enum CreateDeviceProfileContext {
 }
 message CreateDeviceProfileRequest {
   optional CreateDeviceProfileContext context = 1;
-  /// Override the default device profile, takes precedence over device_type.
-  optional halo.credentials.DeviceProfileDocument profile = 2;
+  /// Override parts of the default device profile.
+  optional halo.credentials.DeviceProfileDocument profile_override = 2;
 }
 
 service DevicesService {
