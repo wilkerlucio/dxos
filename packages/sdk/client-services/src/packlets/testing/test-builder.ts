@@ -72,9 +72,9 @@ export const createIdentity = async (peer: ServiceContext) => {
   return peer;
 };
 
-export const createDeviceProfile = (peer: ServiceContext) => {
-  return peer.createDefaultDeviceProfile();
-};
+// export const createDeviceProfile = (peer: ServiceContext) => {
+//   return peer.createDefaultDeviceProfile();
+// };
 
 // TODO(burdon): Remove @dxos/client-testing.
 // TODO(burdon): Create builder and make configurable.
