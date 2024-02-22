@@ -279,13 +279,12 @@ export class HaloProxy implements Halo {
       throw new ApiError('Client not open.');
     }
 
-    invariant(this._serviceProvider.services.IdentityService, 'DevicesService not available');
     // TODO(nf): apply the device profile without being async?
     // if (deviceProfile) {
     //   await this._serviceProvider.services.IdentityService.setCurrentDeviceProfile(deviceProfile);
     // }
     log('accept invitation', invitation);
-    return this._invitationProxy!.join(invitation);
+    return this._invitationProxy!.join(invitation, deviceProfile);
   }
 
   /**

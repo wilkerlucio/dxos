@@ -221,7 +221,7 @@ export class IdentityManager {
   }
 
   /**
-   * Accept an existing identity. Expects it's device key to be authorized (now or later).
+   * Accept an existing identity. Expects its device key to be authorized (now or later).
    */
   async acceptIdentity(params: JoinIdentityParams) {
     log('accepting identity', { params });

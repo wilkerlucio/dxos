@@ -65,8 +65,6 @@ export default class Join extends BaseCommand<typeof Join> {
         deviceProfile.type = DeviceType.AGENT_MANAGED;
       }
 
-      invariant(client.services.services.IdentityService);
-      await client.services.services.IdentityService.setCurrentDeviceProfile(deviceProfile);
 
       ux.log('');
       ux.action.start('Waiting for peer to connect');
@@ -76,7 +74,7 @@ export default class Join extends BaseCommand<typeof Join> {
         invitation = await asyncTimeout(
           Promise.all([
             acceptInvitation({
-              observable: client.halo.join(InvitationEncoder.decode(encoded!)),
+              observable: client.halo.join(InvitationEncoder.decode(encoded!), deviceProfile),
               callbacks: {
                 onConnecting: async () => ux.action.stop(),
                 onReadyForAuth: async () => secret ?? ux.prompt(chalk`\n{red Secret}`),
