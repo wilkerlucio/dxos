@@ -8,7 +8,7 @@ import platform from 'platform';
 import { asyncTimeout } from '@dxos/async';
 import { type Client } from '@dxos/client';
 import { invariant } from '@dxos/invariant';
-import { DeviceType, DeviceProfileDocument } from '@dxos/protocols/proto/dxos/halo/credentials';
+import { DeviceType } from '@dxos/protocols/proto/dxos/halo/credentials';
 
 import { BaseCommand } from '../../base-command';
 import { IdentityWaitTimeoutError } from '../../errors';

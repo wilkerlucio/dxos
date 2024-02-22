@@ -56,7 +56,6 @@ export type CreateIdentityOptions = {
   deviceProfile?: DeviceProfileDocument;
 };
 
-
 // TODO(dmaretskyi): Rename: represents the peer's state machine.
 @Trace.resource()
 export class IdentityManager {

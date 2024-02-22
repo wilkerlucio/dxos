@@ -128,7 +128,6 @@ export class Identity {
     return this._deviceStateMachine.deviceCredentialChain;
   }
 
-
   /**
    * Issues credentials as identity.
    * Requires identity to be ready.

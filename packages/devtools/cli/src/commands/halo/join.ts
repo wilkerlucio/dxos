@@ -65,7 +65,6 @@ export default class Join extends BaseCommand<typeof Join> {
         deviceProfile.type = DeviceType.AGENT_MANAGED;
       }
 
-
       ux.log('');
       ux.action.start('Waiting for peer to connect');
       const done = new Trigger();
