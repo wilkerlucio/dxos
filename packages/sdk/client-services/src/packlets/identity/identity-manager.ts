@@ -201,7 +201,7 @@ export class IdentityManager {
       if (platform.name?.startsWith('iOS') || platform.name?.startsWith('Android')) {
         type = DeviceType.MOBILE;
       } else if ((globalThis as any).__args) {
-        type = deviceType.NATIVE;
+        type = DeviceType.NATIVE;
       } else {
         type = DeviceType.BROWSER;
       }
