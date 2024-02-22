@@ -31,7 +31,7 @@ import { BlobStore } from '@dxos/teleport-extension-object-sync';
 import { trace as Trace } from '@dxos/tracing';
 import { safeInstanceof } from '@dxos/util';
 
-import { IdentityManager, type JoinIdentityParams } from '../identity';
+import { type CreateIdentityOptions, IdentityManager, type JoinIdentityParams } from '../identity';
 import {
   DeviceInvitationProtocol,
   InvitationsHandler,
