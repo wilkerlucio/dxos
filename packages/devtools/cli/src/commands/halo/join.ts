@@ -7,8 +7,6 @@ import chalk from 'chalk';
 
 import { asyncTimeout, Trigger } from '@dxos/async';
 import { type Client } from '@dxos/client';
-import { type Device } from '@dxos/client/halo';
-import { DeviceProfileDocument } from '@dxos/protocols/proto/dxos/halo/credentials';
 import { type Invitation, InvitationEncoder } from '@dxos/client/invitations';
 import { invariant } from '@dxos/invariant';
 import { CreateDeviceProfileContext } from '@dxos/protocols/proto/dxos/client/services';
