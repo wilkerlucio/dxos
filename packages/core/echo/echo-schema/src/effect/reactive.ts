@@ -106,3 +106,11 @@ export const reduce = <T>(
 
   return acc;
 };
+
+/**
+ * Mark field as indexed.
+ */
+export const Index = () =>
+  S.annotations({
+    [IndexAnnotation]: true, // TODO(burdon): Can only be applied to literal.
+  });
