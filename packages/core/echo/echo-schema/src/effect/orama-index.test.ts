@@ -6,6 +6,7 @@ import set from 'lodash.set';
 import { AST } from '@effect/schema';
 import { getOrElse } from 'effect/Option';
 import { pipe } from 'effect';
+import { create, insert, search } from '@orama/orama';
 
 describe('Orama indexing of effect schema', () => {
   test.only('build schema', async () => {
@@ -24,6 +25,25 @@ describe('Orama indexing of effect schema', () => {
 
     const schema = buildOramaSchemaFromEffectSchema(Contact);
     console.log(schema);
+
+    const orama = await create({
+      schema,
+    });
+
+    const contact: Contact & { id: string } = {
+      id: '123',
+      name: 'John Doe',
+      age: 42,
+      address: {
+        street: '123 Elm St.',
+        city: 'Springfield',
+      },
+    };
+
+    await insert(orama, contact);
+    const result = await search(orama, { term: 'Springfield' });
+
+    log.info('Result:', result);
   });
 });
 
@@ -33,19 +53,6 @@ const buildOramaSchemaFromEffectSchema = (schema: S.Schema<any>): OramaSchema =>
   return E.reduce(
     schema.ast,
     (acc, property, path) => {
-      // First
-      if (
-        pipe(
-          property.type,
-          E.getIndexAnnotation,
-          getOrElse(() => false),
-          (x) => !x,
-        )
-      ) {
-        return acc;
-      }
-
-      // Second
       if (!property.type.annotations[E.IndexAnnotation]) {
         return acc;
       }
