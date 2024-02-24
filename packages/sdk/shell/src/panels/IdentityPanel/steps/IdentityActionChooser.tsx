@@ -31,7 +31,9 @@ export const IdentityActionChooser = (props: IdentityPanelStepProps) => {
     const testing = e.altKey && e.shiftKey;
     invitations.forEach((invitation) => invitation.cancel());
     const invitation = client.halo.share(
-      testing ? { type: Invitation.Type.MULTIUSE, authMethod: Invitation.AuthMethod.NONE } : undefined,
+      testing
+        ? { type: Invitation.Type.MULTIUSE, authMethod: Invitation.AuthMethod.NONE, persistent: true }
+        : undefined,
     );
     // TODO(wittjosiah): Don't depend on NODE_ENV.
     if (process.env.NODE_ENV !== 'production') {
