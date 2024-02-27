@@ -70,8 +70,6 @@ describe('ollama', () => {
         // revenue: S.number.pipe(S.lessThan(100)),
       });
 
-      const cr = await createChainResources('ollama');
-
       type ChatMessage = {
         role: string;
         content: string;
