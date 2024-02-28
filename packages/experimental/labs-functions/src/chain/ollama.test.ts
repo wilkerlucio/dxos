@@ -157,4 +157,136 @@ describe('ollama', () => {
 
     console.log(inspect(resultData, false, null, true));
   }).timeout(1_000_000);
+
+  describe.skip('pipeline', async () => {
+    const P = null as any;
+
+    const E = {
+      ref: <T>(x: T) => x,
+    };
+
+    test('translate', () => {
+      const Translation = S.struct({
+        translatedText: S.string,
+      });
+
+      P.onCommand('/translate', ['language', 'text'])
+        .prompt(({ command }: any) => `Translate the following text to ${command.language}; text: ${command.text} `)
+        .outputOne(Translation)
+        .runLLM()
+        .insertChatReply(); // Pipeline<Translation>
+    });
+
+    test('chess hint', () => {
+      const ChessGame = S.struct({
+        pgn: S.string,
+      });
+
+      const ChessMove = S.struct({
+        move: S.string.pipe(S.description('The move in standard algebraic notation')),
+        comment: S.string.pipe(S.description('An optional comment about the move')),
+      });
+
+      // TODO(dmaretskyi): Teach LLM to use tools.
+      P.onCommand('/hint')
+        .onTimer(10_000)
+        .requireAttention(ChessGame)
+        .promptLLM(
+          ({ command, attention }: any) => `
+            You are a machine that is an expert chess player.
+            
+            The move history of the current game is: ${attention.pgn}
+            
+            Suggest the next move and very briefly explain your strategy in a couple of sentences.
+          `,
+        )
+        .outputOne(ChessMove)
+        .insertSuggestion(); // Pipeline<ChessMove>
+    });
+
+    test('explain', () => {
+      const MarkdownDocument = S.struct({
+        content: S.string,
+      });
+
+      const Cursor = S.struct({
+        quotedText: S.string,
+        begin: S.string,
+        end: S.string,
+      }).pipe(S.description('Automerge cursor'));
+
+      const Quote = S.transform(
+        S.string.pipe(S.description('Quoted text as it appears in the document')),
+        Cursor,
+        (quote) => null as any, // todo: quote to cursor,
+        (cursor) => null as any, // todo: cursor to quote,
+      );
+
+      const Explanation = S.struct({
+        quote: Quote,
+        quotedDocument: E.ref(MarkdownDocument).pipe(P.llmIgnore),
+        explanation: S.string.pipe(S.description('A couple sentences explaining the quote')),
+      });
+
+      P.onTimer(10_000)
+        .requireAttention(MarkdownDocument)
+        .promptLLM(
+          ({ attention }: any) => `
+            You are a machine that is an expert in the domain of the document.
+            
+            Pleas find the terms that need explanation in the document and provide a brief explanation.
+
+            The document: ${attention.content}
+          `,
+        )
+        .outputMultiple(Explanation)
+        .dedupOn((explanation: S.Schema.To<typeof Explanation>) => [
+          explanation.quote.quotedText,
+          explanation.quotedDocument,
+        ])
+        .insertComments();
+    });
+
+    test('stockfish', () => {
+      const ChessGame = S.struct({
+        pgn: S.string,
+      });
+
+      const StockfishEval = S.struct({
+        evaluation: S.number.pipe(S.description('The evaluation of the position after the best move')),
+        moves: S.array(
+          S.struct({
+            move: S.string,
+            evaluation: S.number,
+          }).pipe(S.description('The best moves and their evaluations')),
+        ),
+      });
+
+      const StockfishTool = P.defineTool({
+        input: ChessGame,
+        output: StockfishEval,
+        description: 'A tool that uses Stockfish to evaluate the position and suggest best moves.',
+        run: async (game: S.Schema.To<typeof ChessGame>): Promise<S.Schema.To<typeof StockfishEval>> => null as any, // todo
+      });
+
+      const ChessMove = S.struct({
+        move: S.string.pipe(S.description('The move in standard algebraic notation')),
+        comment: S.string.pipe(S.description('An optional comment about the move')),
+      });
+
+      P.onCommand('/hint')
+        .onTimer(10_000)
+        .requireAttention(ChessGame)
+        .runTool(StockfishTool) // Pipeline<StockfishEval>
+        .mapResult(
+          (evaluation: S.Schema.To<typeof StockfishEval>): S.Schema.To<typeof ChessMove> => ({
+            move: evaluation.moves[0].move,
+            comment: 'Best move according to Stockfish.',
+          }),
+        )
+        .insertSuggestion(); // Pipeline<ChessMove>
+    });
+  });
 });
+
+type Signal = {};
