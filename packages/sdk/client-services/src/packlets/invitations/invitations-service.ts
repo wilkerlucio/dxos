@@ -157,6 +157,9 @@ export class InvitationsServiceImpl implements InvitationsService {
       await created.cancel();
       this._createInvitations.delete(invitationId);
       this._removedCreated.emit(created.get());
+      if (created.get().persistent) {
+        await this._metadataStore.removeInvitation(created.get().invitationId);
+      }
     } else if (accepted) {
       await accepted.cancel();
       this._acceptInvitations.delete(invitationId);
@@ -212,6 +215,8 @@ export class InvitationsServiceImpl implements InvitationsService {
         type: QueryInvitationsResponse.Type.ACCEPTED,
         invitations: Array.from(this._acceptInvitations.values()).map((invitation) => invitation.get()),
       });
+
+      // TODO(nf): expired invitations?
     });
   }
 }

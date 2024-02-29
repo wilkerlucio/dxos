@@ -30,6 +30,7 @@ export const IdentityActionChooser = (props: IdentityPanelStepProps) => {
   const createInvitation = (e: React.MouseEvent) => {
     const testing = e.altKey && e.shiftKey;
     invitations.forEach((invitation) => invitation.cancel());
+    // TODO(nf): make persistent configurable
     const invitation = client.halo.share(
       testing
         ? { type: Invitation.Type.MULTIUSE, authMethod: Invitation.AuthMethod.NONE, persistent: true }

@@ -18,7 +18,6 @@ import {
   type SpaceMetadata,
   type IdentityRecord,
   type SpaceCache,
-  type ControlPipelineSnapshot,
   LargeSpaceMetadata,
 } from '@dxos/protocols/proto/dxos/echo/metadata';
 import { type Directory, type File } from '@dxos/random-access-storage';
