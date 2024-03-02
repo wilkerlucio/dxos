@@ -156,7 +156,7 @@ export class InvitationsProxy implements Invitations {
     };
   }
 
-  // TODO(nf): InvitationId in options implies that the invitation must already exist?
+  // TODO(nf): Some way to retrieve observables for resumed invitations?
   share(options?: Partial<Invitation>): CancellableInvitation {
     const invitation: Invitation = { ...this.getInvitationOptions(), ...options };
     this._invitations.add(invitation.invitationId);
@@ -164,10 +164,6 @@ export class InvitationsProxy implements Invitations {
     const existing = this._created.get().find((created) => created.get().invitationId === invitation.invitationId);
     if (existing) {
       return existing;
-    } else {
-      if (options?.invitationId) {
-        throw new Error('invitationId provided but no existing invitation present');
-      }
     }
 
     const observable = new CancellableInvitation({
@@ -187,6 +183,7 @@ export class InvitationsProxy implements Invitations {
   async resumePersistentInvitations() {
     const invitations = await this._invitationsService.getPersistentInvitations();
     for (const invitation of invitations.invitations ?? []) {
+      // TODO(nf): track resumed invitations in InvitationsService or elsewhere?
       const observable = new CancellableInvitation({
         initialInvitation: invitation,
         subscriber: createObservable(this._invitationsService.createInvitation(invitation)),
@@ -197,8 +194,6 @@ export class InvitationsProxy implements Invitations {
         },
       });
       this._createdUpdate.emit([...this._created.get(), observable]);
-
-      // TODO: cancel invitations at persistence expiry.
     }
   }
 

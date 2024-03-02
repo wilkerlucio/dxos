@@ -27,7 +27,6 @@ import { invitationExpired, type InvitationsHandler } from './invitations-handle
 export class InvitationsServiceImpl implements InvitationsService {
   private readonly _createInvitations = new Map<string, CancellableInvitation>();
   private readonly _acceptInvitations = new Map<string, AuthenticatingInvitation>();
-  private readonly _savedInvitations = new Map<string, Invitation>();
   private readonly _invitationCreated = new Event<Invitation>();
   private readonly _invitationAccepted = new Event<Invitation>();
   private readonly _removedCreated = new Event<Invitation>();
@@ -37,7 +36,6 @@ export class InvitationsServiceImpl implements InvitationsService {
   constructor(
     private readonly _invitationsHandler: InvitationsHandler,
     private readonly _getHandler: (invitation: Invitation) => InvitationProtocol,
-    // TODO(nf): avoid making InvitationManager?
     private readonly _metadataStore: MetadataStore,
   ) {}
 
@@ -88,6 +86,7 @@ export class InvitationsServiceImpl implements InvitationsService {
           close();
           if (invitation.get().persistent) {
             await savePersistentInvitationCtx.dispose();
+            // TODO(nf): remove on all complete conditions?
             await this._metadataStore.removeInvitation(invitation.get().invitationId);
           }
 

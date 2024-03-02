@@ -7,7 +7,7 @@ import chaiAsPromised from 'chai-as-promised';
 import waitForExpect from 'wait-for-expect';
 
 import { asyncChain, asyncTimeout, Trigger } from '@dxos/async';
-import { type Space } from '@dxos/client-protocol';
+import { type CancellableInvitation, type Space } from '@dxos/client-protocol';
 import { type DataSpace, InvitationsServiceImpl, type ServiceContext } from '@dxos/client-services';
 import {
   type PerformInvitationParams,
@@ -18,6 +18,7 @@ import {
 } from '@dxos/client-services/testing';
 import { MetadataStore } from '@dxos/echo-pipeline';
 import { invariant } from '@dxos/invariant';
+import { log } from '@dxos/log';
 import { AlreadyJoinedError } from '@dxos/protocols';
 import { ConnectionState, Invitation } from '@dxos/protocols/proto/dxos/client/services';
 import { createStorage, StorageType } from '@dxos/random-access-storage';
@@ -294,6 +295,68 @@ describe('Invitations', () => {
   });
 
   describe('InvitationsProxy', () => {
+    describe('invitation expiry', () => {
+      let hostContext: ServiceContext;
+      let guestContext: ServiceContext;
+      let host: InvitationsProxy;
+      let space: DataSpace;
+      let hostMetadata: MetadataStore;
+
+      beforeEach(async () => {
+        hostMetadata = new MetadataStore(createStorage({ type: StorageType.RAM }).createDirectory());
+        const guestMetadata = new MetadataStore(createStorage({ type: StorageType.RAM }).createDirectory());
+        const peers = await asyncChain<ServiceContext>([createIdentity, closeAfterTest])(createPeers(2));
+        hostContext = peers[0];
+        guestContext = peers[1];
+        invariant(hostContext.dataSpaceManager);
+        invariant(guestContext.dataSpaceManager);
+
+        const hostService = new InvitationsServiceImpl(
+          hostContext.invitations,
+          (invitation) => hostContext.getInvitationHandler(invitation),
+          hostMetadata,
+        );
+        const guestService = new InvitationsServiceImpl(
+          guestContext.invitations,
+          (invitation) => guestContext.getInvitationHandler(invitation),
+          guestMetadata,
+        );
+
+        space = await hostContext.dataSpaceManager.createSpace();
+        host = new InvitationsProxy(hostService, undefined, () => ({
+          kind: Invitation.Kind.SPACE,
+          spaceKey: space.key,
+        }));
+
+        afterTest(() => space.close());
+      });
+      test('invitations expire', async () => {
+        const expired = new Trigger();
+        const complete = new Trigger();
+        const invitation = host.share({ lifetime: 3 });
+        invitation.subscribe(
+          async (invitation) => {
+            if (invitation.state === Invitation.State.EXPIRED) {
+              expired.wake();
+            }
+          },
+          (err: Error) => {
+            log('invitation error', { err });
+            throw err;
+          },
+          () => {
+            complete.wake();
+          },
+        );
+        await expired.wait({ timeout: 5_000 });
+        await complete.wait();
+        expect(invitation.get().state).to.eq(Invitation.State.EXPIRED);
+        // TODO: assumes too much about implementation.
+        expect(hostMetadata.getInvitations()).to.have.lengthOf(0);
+        const swarmTopic = hostContext.networkManager.topics.find((topic) => topic.equals(invitation.get().swarmKey));
+        expect(swarmTopic).to.be.undefined;
+      });
+    });
     describe('space with persistent invitation', () => {
       let hostContext: ServiceContext;
       let guestContext: ServiceContext;
@@ -327,7 +390,7 @@ describe('Invitations', () => {
         afterTest(() => space.close());
 
         guest = new InvitationsProxy(guestService, undefined, () => ({ kind: Invitation.Kind.SPACE }));
-        let persistentInvitationId: string;
+        let persistentInvitation: CancellableInvitation;
         {
           const tempHost = new InvitationsProxy(hostService, undefined, () => ({
             kind: Invitation.Kind.SPACE,
@@ -342,9 +405,8 @@ describe('Invitations', () => {
               savedTrigger.wake();
             }
           });
-          const persistentInvitation = tempHost.share({ authMethod: Invitation.AuthMethod.NONE });
+          persistentInvitation = tempHost.share({ authMethod: Invitation.AuthMethod.NONE });
           await savedTrigger.wait();
-          persistentInvitationId = persistentInvitation.get().invitationId;
           // TODO(nf): expose this in API as suspendInvitation()/SuspendableInvitation?
           await hostContext.networkManager.leaveSwarm(persistentInvitation.get().swarmKey);
         }
@@ -361,6 +423,7 @@ describe('Invitations', () => {
         await host.resumePersistentInvitations();
 
         const [hostObservable] = host.created.get();
+        expect(hostObservable.get().invitationId).to.be.eq(persistentInvitation.get().invitationId);
 
         const hostComplete = new Trigger<Result>();
         const guestComplete = new Trigger<Result>();

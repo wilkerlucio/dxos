@@ -416,6 +416,7 @@ message Invitation {
     CANCELLED = 6;
     TIMEOUT = 7;
     ERROR = 8;
+    EXPIRED = 9;
   }
 
   /// Local identifier (random).
@@ -436,7 +437,7 @@ message Invitation {
   /// Local state.
   State state = 6;
 
-  /// Timeout (ms).
+  /// Timeout for guest to complete invitation once connected (ms).
   optional int32 timeout = 7;
 
   /// Guest's identity.
