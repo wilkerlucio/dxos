@@ -27,6 +27,17 @@ export default class Share extends BaseCommand<typeof Share> {
       description: 'Timeout in milliseconds.',
       default: 5_000,
     }),
+    origin: Flags.string({
+      description: 'Base URL of the application to join the invitation, e.g. https://composer.dxos.org',
+    }),
+    lifetime: Flags.integer({
+      description: 'Lifetime of the invitation in seconds',
+      default: 86400,
+    }),
+    persistent: Flags.boolean({
+      description: 'Invitation should resume if client restarts',
+      default: true,
+    }),
   };
 
   async run(): Promise<any> {
@@ -37,7 +48,13 @@ export default class Share extends BaseCommand<typeof Share> {
       // TODO(burdon): Timeout error not propagated.
       const type = this.flags.multiple ? Invitation.Type.MULTIUSE : undefined;
       const authMethod = this.flags['no-auth'] ? Invitation.AuthMethod.NONE : undefined;
-      const observable = space!.share({ type, authMethod, timeout: this.flags.timeout });
+      const observable = space!.share({
+        type,
+        authMethod,
+        timeout: this.flags.timeout,
+        persistent: this.flags.persistent,
+        lifetime: this.flags.lifetime,
+      });
       const invitationSuccess = hostInvitation({
         observable,
         callbacks: {

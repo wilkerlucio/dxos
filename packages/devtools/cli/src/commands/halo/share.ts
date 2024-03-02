@@ -5,8 +5,8 @@
 import { Flags, ux } from '@oclif/core';
 import chalk from 'chalk';
 
-import { type Client, PublicKey } from '@dxos/client';
-import { InvitationEncoder } from '@dxos/client/invitations';
+import { type Client } from '@dxos/client';
+import { Invitation, InvitationEncoder } from '@dxos/client/invitations';
 
 import { BaseCommand } from '../../base-command';
 import { hostInvitation } from '../../util';
@@ -24,6 +24,14 @@ export default class Share extends BaseCommand<typeof Share> {
     origin: Flags.string({
       description: 'Base URL of the application to join the invitation, e.g. https://composer.dxos.org',
     }),
+    lifetime: Flags.integer({
+      description: 'Lifetime of the invitation in seconds',
+      default: 86400,
+    }),
+    persistent: Flags.boolean({
+      description: 'Invitation should resume if client restarts',
+      default: true,
+    }),
   };
 
   async run(): Promise<any> {
@@ -35,6 +43,8 @@ export default class Share extends BaseCommand<typeof Share> {
 
       const observable = client.halo.share({
         authMethod: this.flags.noCode ? Invitation.AuthMethod.NONE : Invitation.AuthMethod.SHARED_SECRET,
+        persistent: this.flags.persistent,
+        lifetime: this.flags.lifetime,
       });
       const invitationSuccess = hostInvitation({
         observable,
