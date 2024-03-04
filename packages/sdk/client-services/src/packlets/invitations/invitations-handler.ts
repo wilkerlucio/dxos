@@ -423,6 +423,6 @@ export const invitationExpired = (invitation: Invitation) => {
     invitation.created &&
     invitation.lifetime &&
     invitation.lifetime !== 0 &&
-    invitation.created.getTime() + invitation.lifetime < Date.now()
+    invitation.created.getTime() + invitation.lifetime * 1000 < Date.now()
   );
 };
