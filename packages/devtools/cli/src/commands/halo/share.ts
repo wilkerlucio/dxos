@@ -28,9 +28,12 @@ export default class Share extends BaseCommand<typeof Share> {
       description: 'Lifetime of the invitation in seconds',
       default: 86400,
     }),
-    persistent: Flags.boolean({
-      description: 'Invitation should resume if client restarts',
-      default: true,
+    // TODO(nf): --no- doesn't work
+    'no-persistent': Flags.boolean({
+      description: "Don't resume invitation if client restarts",
+    }),
+    'no-wait': Flags.boolean({
+      description: "Don't wait for a peer to connect before exiting CLI.",
     }),
   };
 
@@ -61,12 +64,17 @@ export default class Share extends BaseCommand<typeof Share> {
             !this.flags.noCode && this.log(chalk`\n{red Secret}: ${observable.get().authCode}\n`);
           },
         },
+        waitForSuccess: false,
       });
 
-      ux.action.start('Waiting for peer to connect');
-      await invitationSuccess;
-      ux.action.stop();
-      ux.log(chalk`{green Joined successfully.}`);
+      if (!this.flags['no-wait']) {
+        ux.action.start('Waiting for peer to connect');
+        await invitationSuccess;
+        ux.action.stop();
+        ux.log(chalk`{green Joined successfully.}`);
+      } else {
+        await invitationSuccess;
+      }
     });
   }
 }

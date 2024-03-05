@@ -38,6 +38,15 @@ export default class Share extends BaseCommand<typeof Share> {
       description: 'Invitation should resume if client restarts',
       default: true,
     }),
+    // TODO(nf): --no- doesn't work
+    'no-persistent': Flags.boolean({
+      description: "Don't resume invitation if client restarts",
+      default: true,
+    }),
+    'no-wait': Flags.boolean({
+      description: "Don't wait for a peer to connect before exiting CLI.",
+      default: true,
+    }),
   };
 
   async run(): Promise<any> {
@@ -68,13 +77,18 @@ export default class Share extends BaseCommand<typeof Share> {
             }
           },
         },
+        waitForSuccess: false,
       });
 
-      // TODO(burdon): Display joined peer?
-      ux.action.start('Waiting for peer to connect');
-      await invitationSuccess;
-      ux.action.stop();
-      ux.log(chalk`{green Joined successfully.}`);
+      if (!this.flags['no-wait']) {
+        // TODO(burdon): Display joined peer?
+        ux.action.start('Waiting for peer to connect');
+        await invitationSuccess;
+        ux.action.stop();
+        ux.log(chalk`{green Joined successfully.}`);
+      } else {
+        await invitationSuccess;
+      }
     });
   }
 }
