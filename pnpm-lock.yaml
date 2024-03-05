@@ -7750,6 +7750,9 @@ importers:
       '@braneframe/types':
         specifier: workspace:*
         version: link:../../apps/types
+      '@dxos/echo-pipeline':
+        specifier: workspace:*
+        version: link:../../core/echo/echo-pipeline
       '@dxos/random-access-storage':
         specifier: workspace:*
         version: link:../../common/random-access-storage
