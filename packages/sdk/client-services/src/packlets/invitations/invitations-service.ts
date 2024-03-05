@@ -236,12 +236,14 @@ export class InvitationsServiceImpl implements InvitationsService {
         action: QueryInvitationsResponse.Action.ADDED,
         type: QueryInvitationsResponse.Type.CREATED,
         invitations: Array.from(this._createInvitations.values()).map((invitation) => invitation.get()),
+        existing: true,
       });
 
       next({
         action: QueryInvitationsResponse.Action.ADDED,
         type: QueryInvitationsResponse.Type.ACCEPTED,
         invitations: Array.from(this._acceptInvitations.values()).map((invitation) => invitation.get()),
+        existing: true,
       });
 
       if (this._persistentInvitationsLoaded) {
