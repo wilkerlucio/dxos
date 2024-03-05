@@ -7,7 +7,7 @@ import chaiAsPromised from 'chai-as-promised';
 import waitForExpect from 'wait-for-expect';
 
 import { asyncChain, asyncTimeout, Trigger } from '@dxos/async';
-import { type CancellableInvitation, type Space } from '@dxos/client-protocol';
+import { type Space } from '@dxos/client-protocol';
 import { type DataSpace, InvitationsServiceImpl, type ServiceContext } from '@dxos/client-services';
 import {
   type PerformInvitationParams,
@@ -357,7 +357,7 @@ describe('Invitations', () => {
         expect(swarmTopic).to.be.undefined;
       });
     });
-    describe('space with persistent invitation', () => {
+    describe('persistent invitations', () => {
       let hostContext: ServiceContext;
       let guestContext: ServiceContext;
       let host: InvitationsProxy;
@@ -366,7 +366,7 @@ describe('Invitations', () => {
       let hostService: InvitationsServiceImpl;
       let hostMetadata: MetadataStore;
 
-      test('no auth', async () => {
+      test('space with no auth', async () => {
         hostMetadata = new MetadataStore(createStorage({ type: StorageType.RAM }).createDirectory());
         const guestMetadata = new MetadataStore(createStorage({ type: StorageType.RAM }).createDirectory());
         const peers = await asyncChain<ServiceContext>([createIdentity, closeAfterTest])(createPeers(2));
@@ -379,18 +379,21 @@ describe('Invitations', () => {
           (invitation) => hostContext.getInvitationHandler(invitation),
           hostMetadata,
         );
+        // TODO(nf): require calling manually outside of service-host?
+        await hostService.loadPersistentInvitations();
 
         const guestService = new InvitationsServiceImpl(
           guestContext.invitations,
           (invitation) => guestContext.getInvitationHandler(invitation),
           guestMetadata,
         );
+        await guestService.loadPersistentInvitations();
 
         space = await hostContext?.dataSpaceManager.createSpace();
         afterTest(() => space.close());
 
         guest = new InvitationsProxy(guestService, undefined, () => ({ kind: Invitation.Kind.SPACE }));
-        let persistentInvitation: CancellableInvitation;
+        let persistentInvitationId: string;
         {
           const tempHost = new InvitationsProxy(hostService, undefined, () => ({
             kind: Invitation.Kind.SPACE,
@@ -405,7 +408,8 @@ describe('Invitations', () => {
               savedTrigger.wake();
             }
           });
-          persistentInvitation = tempHost.share({ authMethod: Invitation.AuthMethod.NONE });
+          const persistentInvitation = tempHost.share({ authMethod: Invitation.AuthMethod.NONE });
+          persistentInvitationId = persistentInvitation.get().invitationId;
           await savedTrigger.wait();
           // TODO(nf): expose this in API as suspendInvitation()/SuspendableInvitation?
           await hostContext.networkManager.leaveSwarm(persistentInvitation.get().swarmKey);
@@ -420,10 +424,13 @@ describe('Invitations', () => {
           kind: Invitation.Kind.SPACE,
           spaceKey: space.key,
         }));
-        await host.resumePersistentInvitations();
+
+        const loadedInvitations = await newHostService.loadPersistentInvitations();
+        await host.open();
+        expect(loadedInvitations.invitations).to.have.lengthOf(1);
 
         const [hostObservable] = host.created.get();
-        expect(hostObservable.get().invitationId).to.be.eq(persistentInvitation.get().invitationId);
+        expect(hostObservable.get().invitationId).to.be.eq(persistentInvitationId);
 
         const hostComplete = new Trigger<Result>();
         const guestComplete = new Trigger<Result>();
@@ -464,6 +471,60 @@ describe('Invitations', () => {
           hostResult: await hostComplete.wait(),
           guestResult: await guestComplete.wait(),
         });
+      });
+      test('non-persistent invitations are not persisted', async () => {
+        hostMetadata = new MetadataStore(createStorage({ type: StorageType.RAM }).createDirectory());
+        const peers = await asyncChain<ServiceContext>([createIdentity, closeAfterTest])(createPeers(1));
+        hostContext = peers[0];
+
+        invariant(hostContext.dataSpaceManager);
+
+        hostService = new InvitationsServiceImpl(
+          hostContext.invitations,
+          (invitation) => hostContext.getInvitationHandler(invitation),
+          hostMetadata,
+        );
+
+        space = await hostContext?.dataSpaceManager.createSpace();
+        afterTest(() => space.close());
+
+        {
+          const tempHost = new InvitationsProxy(hostService, undefined, () => ({
+            kind: Invitation.Kind.SPACE,
+            spaceKey: space.key,
+            persistent: false,
+          }));
+          // TODO(nf): require calling manually outside of service-host?
+          await hostService.loadPersistentInvitations();
+          await tempHost.open();
+
+          const createdTrigger = new Trigger();
+          tempHost.created.subscribe((invitation) => {
+            if (invitation.length > 0) {
+              createdTrigger.wake();
+            }
+          });
+          tempHost.share({ authMethod: Invitation.AuthMethod.NONE });
+          await createdTrigger.wait();
+        }
+
+        const newHostService = new InvitationsServiceImpl(
+          hostContext.invitations,
+          (invitation) => hostContext.getInvitationHandler(invitation),
+          hostMetadata,
+        );
+        await newHostService.loadPersistentInvitations();
+        expect(hostMetadata.getInvitations()).to.have.lengthOf(0);
+
+        host = new InvitationsProxy(newHostService, undefined, () => ({
+          kind: Invitation.Kind.SPACE,
+          spaceKey: space.key,
+        }));
+        await host.open();
+
+        const loadedInvitations = await newHostService.loadPersistentInvitations();
+        expect(loadedInvitations.invitations).to.have.lengthOf(0);
+        expect(host.created.get()).to.have.lengthOf(0);
       });
     });
     describe('space', () => {

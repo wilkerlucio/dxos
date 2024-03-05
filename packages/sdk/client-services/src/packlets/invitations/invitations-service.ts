@@ -12,7 +12,6 @@ import { log } from '@dxos/log';
 import {
   type AuthenticationRequest,
   type AcceptInvitationRequest,
-  type GetPersistentInvitationsResponse,
   Invitation,
   type InvitationsService,
   QueryInvitationsResponse,
@@ -32,6 +31,8 @@ export class InvitationsServiceImpl implements InvitationsService {
   private readonly _removedCreated = new Event<Invitation>();
   private readonly _removedAccepted = new Event<Invitation>();
   private readonly _saved = new Event<Invitation>();
+  private readonly _persistentInvitationsLoadedEvent = new Event();
+  private _persistentInvitationsLoaded = false;
 
   constructor(
     private readonly _invitationsHandler: InvitationsHandler,
@@ -99,13 +100,24 @@ export class InvitationsServiceImpl implements InvitationsService {
     });
   }
 
-  async getPersistentInvitations(): Promise<GetPersistentInvitationsResponse> {
+  async loadPersistentInvitations() {
     const persistentInvitations = this._metadataStore.getInvitations();
 
     // get saved persistent invitations, filter and remove from storage those that have expired.
     const freshInvitations = persistentInvitations.filter(async (invitation) => !invitationExpired(invitation));
 
-    return { invitations: freshInvitations };
+    const cInvitations = freshInvitations.map((persistentInvitation) => {
+      invariant(!this._createInvitations.get(persistentInvitation.invitationId), 'invitation already exists');
+
+      const handler = this._getHandler(persistentInvitation);
+      const invitation = this._invitationsHandler.createInvitation(handler, persistentInvitation);
+      this._createInvitations.set(invitation.get().invitationId, invitation);
+      this._invitationCreated.emit(invitation.get());
+      return persistentInvitation;
+    });
+    this._persistentInvitationsLoadedEvent.emit();
+    this._persistentInvitationsLoaded = true;
+    return { invitations: cInvitations };
   }
 
   acceptInvitation({ invitation: options, deviceProfile }: AcceptInvitationRequest): Stream<Invitation> {
@@ -232,6 +244,22 @@ export class InvitationsServiceImpl implements InvitationsService {
         type: QueryInvitationsResponse.Type.ACCEPTED,
         invitations: Array.from(this._acceptInvitations.values()).map((invitation) => invitation.get()),
       });
+
+      if (this._persistentInvitationsLoaded) {
+        next({
+          action: QueryInvitationsResponse.Action.LOAD_COMPLETE,
+          type: QueryInvitationsResponse.Type.CREATED,
+          // TODO(nf): populate with invitations
+        });
+      } else {
+        this._persistentInvitationsLoadedEvent.on(ctx, () => {
+          next({
+            action: QueryInvitationsResponse.Action.LOAD_COMPLETE,
+            type: QueryInvitationsResponse.Type.CREATED,
+            // TODO(nf): populate with invitations
+          });
+        });
+      }
 
       // TODO(nf): expired invitations?
     });

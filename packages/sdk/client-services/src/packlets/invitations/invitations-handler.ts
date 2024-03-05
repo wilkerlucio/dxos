@@ -187,16 +187,23 @@ export class InvitationsHandler {
       return extension;
     };
 
-    scheduleTask(
-      ctx,
-      async () => {
-        // ensure the swarm is closed before changing state and closing the stream.
-        await swarmConnection.close();
-        stream.next({ ...invitation, state: Invitation.State.EXPIRED });
-        await ctx.dispose();
-      },
-      invitation.lifetime,
-    );
+    if (invitation.lifetime && invitation.created && invitation.lifetime !== 0) {
+      invariant(
+        invitation.created.getTime() + invitation.lifetime * 1000 > Date.now(),
+        'invitation has already expired',
+      );
+      scheduleTask(
+        ctx,
+        async () => {
+          // ensure the swarm is closed before changing state and closing the stream.
+          await swarmConnection.close();
+          stream.next({ ...invitation, state: Invitation.State.EXPIRED });
+          await ctx.dispose();
+        },
+        invitation.created.getTime() + invitation.lifetime * 1000 - Date.now(),
+      );
+    }
+
     let swarmConnection: SwarmConnection;
     const invitationLabel =
       'invitation host for ' +
