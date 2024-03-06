@@ -674,6 +674,11 @@
         },
         {
           "type": "json",
+          "path": "packages/sdk/rql/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
           "path": "packages/sdk/shell/package.json",
           "jsonpath": "$.version"
         },
