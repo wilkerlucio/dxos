@@ -4,119 +4,138 @@
 
 import * as S from '@effect/schema/Schema';
 
-export type RQLOptions<T extends Type> = {
-  root: S.Schema<T>;
-  resolvers: Resolvers<S.Schema.To<S.Schema<T>>>;
+type Resolver = (args: Record<string, any>) => MaybePromise<any>;
+
+type Resolvers = {
+  resolvers: Record<string, Resolver>;
 };
 
-export class RQL<T extends Type> {
-  private _root: S.Schema<T>;
-  private _query: Query<S.Schema.To<typeof this._root>>;
+export type RQLOptions<T> = {
+  root: S.Schema<T>;
+  schema: S.Schema<any>[];
+};
 
-  constructor({ root, resolvers }: RQLOptions<T>) {
+export class RQL<T extends Resolvers> {
+  private _root: RQLOptions<T>['root'];
+  private _schema: RQLOptions<T>['schema'];
+
+  constructor({ root, schema }: RQLOptions<T>) {
     this._root = root;
-    this._query = new Query(resolvers);
+    this._schema = schema;
   }
 
-  get query() {
-    return this._query;
+  get query(): ResolverFunctions<S.Schema.To<typeof this._root>> {
+    return {} as any;
   }
 }
 
-export class Query<T extends Type> {
-  constructor(private readonly _resolvers: Resolvers<T>) {}
-}
+export const resolver = <TArgs = any, TResult = any>({
+  args = S.any,
+  result,
+}: {
+  args?: S.Schema<TArgs>;
+  result: S.Schema<TResult>;
+}) => S.struct({ __args: args, __result: result });
 
-export namespace R {
-  export const resolver = <TArgs = any, TOutput extends Type = Type>({
-    args,
-    output,
-  }: {
-    args: S.Schema<TArgs>;
-    output: S.Schema<TOutput>;
-  }) => S.struct({ __args: args, __output: output });
+class Section extends S.TaggedClass<Section>()('plugin-stack/section', {
+  content: S.any, // Echo Object
+  opened: S.boolean, // Ephemeral state
+}) {}
 
-  // TODO(wittjosiah): Literal becomes just a string.
-  // export const type = <Fields extends S.StructFields>(typename: string, fields: Fields) =>
-  //   S.extend(S.struct({ __typename: S.literal(typename) }), S.struct(fields));
-}
-
-const Root = S.struct({
-  __typename: S.literal('Root'),
-  getObjectById: R.resolver({
-    args: S.string,
-    output: S.struct({
-      __typename: S.literal('Object'),
-      id: S.string,
-      name: S.string,
-    }),
+class Stack extends S.TaggedClass<Stack>()('plugin-stack/stack', {
+  id: S.string,
+  name: S.string,
+  sections: resolver({
+    result: S.array(Section),
   }),
-});
+}) {
+  get resolvers() {
+    return {
+      sections: async () => {
+        // 1) Query echo for sections.
+        // 2) Lookup open state in local storage.
+        return [];
+      },
+    };
+  }
+}
+
+class Folder extends S.TaggedClass<Folder>()('plugin-folder/folder', {
+  id: S.string,
+  name: S.string,
+  items: resolver({
+    result: S.array(S.any),
+  }),
+}) {
+  get resolvers() {
+    return {
+      items: async () => {
+        // 1) Query echo for items.
+        return [];
+      },
+    };
+  }
+}
+
+class Root
+  extends S.Class<Root>()({
+    listFolders: resolver({
+      result: S.array(Folder.struct),
+    }),
+    listStacks: resolver({
+      result: S.array(Stack.struct),
+    }),
+  })
+  implements Resolvers
+{
+  // TODO(wittjosiah): Wrapper of S.Class which infers the type of the resolvers.
+  get resolvers() {
+    return {
+      listFolders: async () => {
+        // 1) Query echo for folders.
+        // 2) Lookup open directories in local storage.
+        return [];
+      },
+      listStacks: async () => {
+        // 1) Query echo for stacks.
+        return [];
+      },
+    };
+  }
+}
 
 export const rql = new RQL({
-  root: Root,
-  resolvers: {
-    Root: {
-      getObjectById: async (parent, args) => {
-        return {
-          __typename: 'Object',
-          id: args,
-          name: 'foo',
-        };
-      },
-    },
-  },
+  root: S.instanceOf(Root),
+  schema: [Folder, Stack],
 });
+
+const stacks = await rql.query.listStacks();
+
+console.log(stacks);
 
 // Internal Types
 
 // TODO(wittjosiah): Which of these need to be exposed?
 
-type Type = {
-  __typename: string;
-};
-
-type ElementType<T> = T extends (infer U)[] ? U : T;
-
-type Values<T> = ElementType<T[keyof T]>;
-
-type NonPrimitive<T> = T extends Type ? T : never;
-
-type NonPrimitiveValues<T> = NonPrimitive<Values<T>>;
-
-// Tor type A | B, this will compute NonPrimitiveValues<A> | NonPrimitiveValues<B> instead of NonPrimitiveValues<A | B>.
-type AllNonPrimitiveValues<T> = T extends infer U ? (U extends Type ? NonPrimitiveValues<U> : never) : never;
-
-type RecursiveNonPrimitiveValues<T> = T extends never
-  ? never
-  : T | AllNonPrimitiveValues<T> | RecursiveNonPrimitiveValues<AllNonPrimitiveValues<T>>;
-
 type MaybePromise<T> = T | Promise<T>;
 
-type CustomResolver<TArgs = any, TOutput extends Type = Type> = {
+type CustomResolver<TArgs = any, TResult extends {} = {}> = {
   __args: TArgs;
-  __output: TOutput;
+  __result: TResult;
 };
 
-type ResolverFunction<TParent extends Type, TArgs, TOutput extends Type> = (
-  parent: TParent,
-  args: TArgs,
-) => MaybePromise<Partial<TOutput>>;
+type ResolverResult<T> =
+  T extends CustomResolver<any, infer TResult>
+    ? TResult
+    : T extends {}
+      ? { [key in keyof T]: ResolverResult<T[key]> }
+      : T;
 
-type FieldToResolver<T, TParent extends Type> =
-  T extends CustomResolver<infer TArgs, infer TOutput>
-    ? ResolverFunction<TParent, TArgs, TOutput>
-    : T extends Type
-      ? ResolverFunction<TParent, unknown, T>
-      : never;
+type ResolverFunction<TArgs, TResult extends {}> = (args?: TArgs) => MaybePromise<ResolverResult<TResult>>;
 
-type ResolverFunctions<T extends {}, TParent extends Type> = {
-  [key in keyof T]?: FieldToResolver<T[key], TParent>;
-};
+type FieldToResolver<T> =
+  T extends CustomResolver<infer TArgs, infer TResult> ? ResolverFunction<TArgs, TResult> : never;
 
-type Resolvers<T extends Type> = {
-  [typename in RecursiveNonPrimitiveValues<T>['__typename']]?: ResolverFunctions<
-    Omit<Extract<RecursiveNonPrimitiveValues<T>, { __typename: typename }>, '__typename'>,
-    Extract<RecursiveNonPrimitiveValues<T>, { __typename: typename }>
-  >;
+type ResolverFunctions<T extends {}> = {
+  [key in keyof Omit<T, 'resolvers'>]: FieldToResolver<T[key]>;
 };
