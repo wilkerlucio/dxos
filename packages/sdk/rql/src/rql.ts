@@ -3,7 +3,6 @@
 //
 
 import * as S from '@effect/schema/Schema';
-import { type Simplify } from 'effect/Types';
 // import { Simplify } from 'effect/Types';
 
 type Resolver = (args?: Record<string, any>) => MaybePromise<any>;
@@ -12,24 +11,30 @@ interface Resolvers {
   readonly resolvers: Record<string, Resolver>;
 }
 
-export type RQLOptions<A, I, R, C, Self, Inherited, Proto> = {
-  root: S.Class<A, I, R, C, Self, Inherited, Proto> & Resolvers;
+export type RQLOptions<T> = {
+  root: {
+    new (args: {}): S.Schema.To<S.Schema<T>> & Resolvers;
+    struct: S.Schema<T>;
+  };
   schema: S.Schema<any>[];
 };
 
-export class RQL<A, I, R, C, Self, Inherited, Proto> {
-  private _root: RQLOptions<A, I, R, C, Self, Inherited, Proto>['root'];
-  private _rootSchema: S.Schema<A & Omit<Inherited, keyof A> & Proto, A & Omit<Inherited, keyof A> & Proto, never>;
-  private _schema: RQLOptions<A, I, R, C, Self, Inherited, Proto>['schema'];
+export class RQL<T> {
+  private _rootClass: RQLOptions<T>['root'];
+  private _rootSchema: S.Schema<T & Resolvers>;
+  private _root: T & Resolvers;
+  private _schema: RQLOptions<T>['schema'];
 
-  constructor({ root, schema }: RQLOptions<A, I, R, C, Self, Inherited, Proto>) {
-    this._root = root;
-    this._rootSchema = S.instanceOf(root);
+  constructor({ root: Root, schema }: RQLOptions<T>) {
+    this._rootClass = Root;
+    this._rootSchema = S.instanceOf(Root);
+    this._root = new Root({});
     this._schema = schema;
   }
 
   get query(): ResolverFunctions<S.Schema.To<typeof this._rootSchema>> {
-    return {} as any;
+    // TODO(wittjosiah): Wrap with schema validation.
+    return this._root.resolvers as ResolverFunctions<S.Schema.To<typeof this._rootSchema>>;
   }
 }
 
@@ -141,32 +146,3 @@ type FieldToResolver<T> =
 type ResolverFunctions<T extends {}> = Required<{
   [key in keyof Omit<T, 'resolvers'>]: FieldToResolver<T[key]>;
 }>;
-
-/// /////////
-
-interface Hello {
-  world(): void;
-}
-
-class Example
-  extends S.Class<Example>()({
-    name: S.optional(S.string),
-  })
-  implements Hello
-{
-  world() {
-    console.log(`Hello, ${this.name}!`);
-  }
-}
-
-const test = (hello: Hello) => {
-  hello.world();
-};
-
-const x = new Example({ name: 'world' });
-
-type C = typeof x;
-type D = C['world'];
-
-type A = typeof Example.prototype;
-type B = A['world'];
