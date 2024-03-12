@@ -162,15 +162,22 @@ type QueryResult<T extends Object = {}, TQuery extends Query<T> = Query<T>> = Re
   [key in keyof Pick<T, keyof TQuery>]: ResultField<T[key], TQuery[key]>;
 }>;
 
-type ResultField<T, TQuery extends QueryField<T>> =
-  T extends CustomResolver<any, infer TResult> ? ResultFieldResolver<TResult, T> : T;
+// TODO(wittjosiah): Why `undefined | unknown`?
+type ResultField<T, TQuery extends QueryField<T> | undefined | unknown> =
+  T extends CustomResolver<any, infer TResult> ? ResultFieldResolver<TResult, TQuery> : T;
 
-type ResultFieldResolver<TResult, T extends CustomResolver<any, TResult>> = TResult extends any[] | readonly any[]
+type ResultFieldResolver<TResult, TQuery extends QueryField<TResult> | undefined | unknown> = TResult extends
+  | any[]
+  | readonly any[]
   ? ElementType<TResult> extends Object
-    ? QueryResult<ElementType<TResult>>[]
+    ? TQuery extends Object
+      ? QueryResult<ElementType<TResult>, TQuery>[]
+      : never
     : TResult
   : TResult extends Object
-    ? QueryResult<TResult>
+    ? TQuery extends Object
+      ? QueryResult<TResult, TQuery>
+      : never
     : TResult;
 
 export type A = Query<S.Schema.To<typeof Root.struct>>;
@@ -186,12 +193,10 @@ export const a = {
   },
 } satisfies Query<S.Schema.To<typeof Root.struct>>;
 
-// TODO(wittjosiah): Application of the query structure is not applied recursively.
 export const b: QueryResult<S.Schema.To<typeof Root.struct>, typeof a> = {
   listStacks: [
     {
       id: '1',
-      name: 'Stack 1',
       sections: [{ content: 'Section 1', opened: true }],
     },
   ],
