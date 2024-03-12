@@ -159,30 +159,22 @@ type QueryField<T> =
 type QueryResolverResult<T> = ElementType<T> extends Object ? Query<ElementType<T>> : ElementType<T>;
 
 type QueryResult<T extends Object = {}, TQuery extends Query<T> = Query<T>> = Required<{
-  [key in keyof Pick<T, keyof TQuery>]: ResultField<T[key]>;
+  [key in keyof Pick<T, keyof TQuery>]: ResultField<T[key], TQuery[key]>;
 }>;
 
-type ResultField<T> =
-  T extends CustomResolver<any, infer TResult>
-    ? TResult extends any[] | readonly any[]
-      ? ElementType<TResult> extends Object
-        ? QueryResult<ElementType<TResult>>[]
-        : TResult
-      : TResult extends Object
-        ? QueryResult<TResult>
-        : TResult
-    : T;
+type ResultField<T, TQuery extends QueryField<T>> =
+  T extends CustomResolver<any, infer TResult> ? ResultFieldResolver<TResult, T> : T;
+
+type ResultFieldResolver<TResult, T extends CustomResolver<any, TResult>> = TResult extends any[] | readonly any[]
+  ? ElementType<TResult> extends Object
+    ? QueryResult<ElementType<TResult>>[]
+    : TResult
+  : TResult extends Object
+    ? QueryResult<TResult>
+    : TResult;
 
 export type A = Query<S.Schema.To<typeof Root.struct>>;
 export type B = QueryResult<S.Schema.To<typeof Root.struct>>;
-export type C = ResultField<S.Schema.To<typeof Folder.struct>['items']>;
-export type D = QueryResult<S.Schema.To<typeof Folder.struct>>;
-
-export type E = ResultField<{
-  readonly __args: never;
-  readonly __result: readonly any[];
-}>;
-export type F = QueryResult<any>;
 
 export const a = {
   listStacks: {
