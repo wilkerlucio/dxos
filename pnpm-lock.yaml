@@ -8235,14 +8235,14 @@ importers:
         specifier: workspace:*
         version: link:../../common/util
       '@effect/schema':
-        specifier: ^0.63.4
-        version: 0.63.4(effect@2.4.9)(fast-check@3.15.1)
+        specifier: 0.64.2
+        version: 0.64.2(effect@2.4.6)(fast-check@3.15.1)
       '@preact/signals-core':
         specifier: ^1.5.1
         version: 1.6.0
       effect:
-        specifier: ^2.4.3
-        version: 2.4.9
+        specifier: 2.4.6
+        version: 2.4.6
 
   packages/sdk/shell:
     dependencies:
@@ -13525,13 +13525,13 @@ packages:
       - supports-color
     dev: true
 
-  /@effect/schema@0.63.4(effect@2.4.9)(fast-check@3.15.1):
-    resolution: {integrity: sha512-59b7N0XntkfivwhTSutyP13t1utlbJ9wDWDwEdAivNPpXBfpUlAWnZw7MAi86qI8J1LVz3ZDlz5p0pkDSu7p9g==}
+  /@effect/schema@0.64.2(effect@2.4.6)(fast-check@3.15.1):
+    resolution: {integrity: sha512-0Rz81HIG0CkJGjGlUuYlUFZmOkyVsqxmlZigfg3BHMjyDjp8NdPQHfT9pGZbenZH6DHUvtEckV8AccbGTzONMA==}
     peerDependencies:
-      effect: ^2.4.3
+      effect: ^2.4.6
       fast-check: ^3.13.2
     dependencies:
-      effect: 2.4.9
+      effect: 2.4.6
       fast-check: 3.15.1
     dev: false
 
@@ -28152,6 +28152,10 @@ packages:
 
   /ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
+
+  /effect@2.4.6:
+    resolution: {integrity: sha512-gaZC+aopWvS67SX8RFT3mirabjpVBk5qshj/Z3IKW35DjzpQ8WhAE7VWwfBBWWMBuQ/B0RsbzKR8YGN2AivIgQ==}
+    dev: false
 
   /effect@2.4.9:
     resolution: {integrity: sha512-hRTy37jVylIYOC4k/VKfgmGkIMEOjR8MOurLzr1J0AD7ufagbcoO7voygZkT2B1STXfBXEsKNWj8yDAzUcPpAA==}

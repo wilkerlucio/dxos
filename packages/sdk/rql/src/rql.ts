@@ -8,13 +8,13 @@ import * as S from '@effect/schema/Schema';
 type Resolver = (args?: Record<string, any>) => MaybePromise<any>;
 
 interface Resolvers {
-  readonly resolvers: Record<string, Resolver>;
+  readonly resolvers: Record<string, Resolver | undefined>;
 }
 
 export type RQLOptions<T extends Object> = {
   root: {
-    new (args: {}): S.Schema.To<S.Schema<T>> & Resolvers;
-    struct: S.Schema<T>;
+    new (args: {}): T & Resolvers;
+    fields: S.Struct.Fields;
   };
   schema: S.Schema<any>[];
 };
@@ -30,10 +30,25 @@ export class RQL<T extends Object> {
     this._schema = schema;
   }
 
-  query(query: Query<S.Schema.To<typeof this._rootClass.struct>>): any {
-    // TODO(wittjosiah): Wrap with schema validation.
-    // return this._root.resolvers as ResolverFunctions<S.Schema.To<typeof this._rootSchema>>;
-    return this._root.resolvers;
+  async query(query: Query<T>): Promise<QueryResult<T, typeof query>> {
+    // TODO(wittjosiah): Make recursive.
+    const keys = Object.keys(query);
+    const result = keys.reduce(
+      (acc, key) => {
+        const resolver = this._root.resolvers[key];
+        const resolverSchema = this._rootClass.fields[key];
+        const args = query[key];
+        if (resolver && resolverSchema && args) {
+          // TODO(wittjosiah): Validate args. Call resolver. Validate result.
+          return { ...acc, [key]: key as any };
+        } else {
+          return acc;
+        }
+      },
+      {} as QueryResult<T, typeof query>,
+    );
+
+    return result;
   }
 }
 
@@ -86,12 +101,12 @@ class Folder extends S.TaggedClass<Folder>()('plugin-folder/folder', {
 }
 
 class Root
-  extends S.Class<Root>()({
+  extends S.Class<Root>('Root')({
     listFolders: resolver({
-      result: S.array(Folder.struct),
+      result: S.array(S.struct(Folder.fields)),
     }),
     listStacks: resolver({
-      result: S.array(Stack.struct),
+      result: S.array(S.struct(Stack.fields)),
     }),
   })
   implements Resolvers
@@ -115,7 +130,7 @@ export const rql = new RQL({
   schema: [Folder, Stack],
 });
 
-const stacks = await rql.query({
+void rql.query({
   listStacks: {
     id: true,
     name: true,
@@ -125,8 +140,6 @@ const stacks = await rql.query({
     },
   },
 });
-
-console.log(stacks);
 
 // Internal Types
 
@@ -143,6 +156,7 @@ type CustomResolver<TArgs, TResult> = {
   __result: TResult;
 };
 
+// TODO(wittjosiah): Update to QueryFunction.
 type ResolverFunction<TArgs, TResult> = (args?: TArgs) => MaybePromise<TResult>;
 
 type Query<T extends Object> = Partial<{
@@ -180,8 +194,8 @@ type ResultFieldResolver<TResult, TQuery extends QueryField<TResult> | undefined
       : never
     : TResult;
 
-export type A = Query<S.Schema.To<typeof Root.struct>>;
-export type B = QueryResult<S.Schema.To<typeof Root.struct>>;
+export type A = Query<typeof Root.prototype>;
+export type B = QueryResult<typeof Root.prototype>;
 
 export const a = {
   listStacks: {
@@ -191,9 +205,9 @@ export const a = {
       opened: true,
     },
   },
-} satisfies Query<S.Schema.To<typeof Root.struct>>;
+} satisfies Query<typeof Root.prototype>;
 
-export const b: QueryResult<S.Schema.To<typeof Root.struct>, typeof a> = {
+export const b: QueryResult<typeof Root.prototype, typeof a> = {
   listStacks: [
     {
       id: '1',
