@@ -8,23 +8,30 @@ export type RQLOptions<
   T extends Object,
   TFields extends S.Struct.Fields,
   TArgs extends Record<string, S.Schema<any>>,
+  TSchema extends TypeClass<any>,
 > = {
   root: QuerySchema<T, TFields, TArgs>;
-  schema?: TypeClass<any>[];
+  schema?: TSchema[];
 };
 
-export class RQL<T extends Object, TFields extends S.Struct.Fields, TArgs extends Record<string, S.Schema<any>>> {
-  private _root: RQLOptions<T, TFields, TArgs>['root'];
-  private _schema: Required<RQLOptions<T, TFields, TArgs>>['schema'];
+export class RQL<
+  T extends Object,
+  TFields extends S.Struct.Fields,
+  TArgs extends Record<string, S.Schema<any>>,
+  TSchema extends TypeClass<any>,
+> {
+  _root: RQLOptions<T, TFields, TArgs, TSchema>['root'];
+  _schema: Required<RQLOptions<T, TFields, TArgs, TSchema>>['schema'];
 
-  constructor({ root, schema = [] }: RQLOptions<T, TFields, TArgs>) {
+  constructor({ root, schema = [] }: RQLOptions<T, TFields, TArgs, TSchema>) {
     this._root = root;
-    this._schema = [root, ...schema];
+    this._schema = schema;
   }
 
+  // TODO(wittjosiah): Fix inferred query types.
   async query(
-    query: Query<T, TypeClassByTypename<typeof this._schema>>,
-  ): Promise<QueryResult<T, TypeClassByTypename<typeof this._schema>, typeof query>> {
+    query: Query<typeof this._root, TypeClassByTypename<typeof this._schema>>,
+  ): Promise<QueryResult<typeof this._root, TypeClassByTypename<typeof this._schema>, typeof query>> {
     // TODO(wittjosiah): Make recursive.
     const keys = Object.keys(query);
     const result = keys.reduce(
@@ -40,7 +47,7 @@ export class RQL<T extends Object, TFields extends S.Struct.Fields, TArgs extend
           return acc;
         }
       },
-      {} as QueryResult<T, TypeClassByTypename<typeof this._schema>, typeof query>,
+      {} as QueryResult<typeof this._root, TypeClassByTypename<typeof this._schema>, typeof query>,
     );
 
     return result;
@@ -121,20 +128,17 @@ class Root extends S.Class<Root>('Root')({
   };
 }
 
-const schema = [Folder, Stack, Section, Root];
 export const rql = new RQL({
   root: Root,
-  schema,
+  schema: [Folder, Stack, Section],
 });
 
 export const query = async () => {
   const result = await rql.query({
     listStacks: {
-      id: true,
       name: true,
       sections: {
         content: true,
-        opened: true,
       },
     },
   });
@@ -184,7 +188,7 @@ type GroupByTypename<T> =
       : never
     : never;
 
-type TypeClassByTypename<T extends TypeClass<any>[]> = S.Simplify<UnionToIntersection<GroupByTypename<Prototypes<T>>>>;
+type TypeClassByTypename<T extends TypeClass<any>[]> = UnionToIntersection<GroupByTypename<Prototypes<T>>>;
 
 type Resolvers<TArgs extends Record<string, S.Schema<any>>, TResults extends S.Struct.Fields> = {
   // TODO(wittjosiah): Support args of never for no args.
@@ -200,7 +204,7 @@ type QuerySchema<T, TFields extends S.Struct.Fields, TArgs extends Record<string
   prototype: T;
 };
 
-type ClassLookup = Record<string, TypeClass<any>>;
+type ClassLookup = Record<string | symbol | number, TypeClass<any>>;
 
 type Query<T, TLookup extends ClassLookup> =
   T extends QuerySchema<infer TSchema, infer TFields, infer TArgs>
@@ -220,8 +224,6 @@ type Query<T, TLookup extends ClassLookup> =
       : T extends Object
         ? Partial<{ [k in keyof Omit<T, '_tag'>]: QueryField<T[k], TLookup> }>
         : never;
-
-export type F = Query<typeof Root, TypeClassByTypename<typeof schema>>['listStacks'];
 
 type ResolverFunction<TArgs, TResult> = (args?: TArgs) => MaybePromise<TResult>;
 
@@ -282,8 +284,9 @@ type ResultFieldResolver<
       : never
   : TResult;
 
-export type A = Query<typeof Root, TypeClassByTypename<typeof schema>>;
-export type B = QueryResult<typeof Root, TypeClassByTypename<typeof schema>, A>;
+export type L = TypeClassByTypename<typeof rql._schema>;
+export type A = Query<typeof rql._root, TypeClassByTypename<typeof rql._schema>>;
+export type B = QueryResult<typeof rql._root, TypeClassByTypename<typeof rql._schema>, A>;
 
 export const a = {
   listFolders: {
@@ -303,7 +306,7 @@ export const a = {
   },
 } satisfies A;
 
-export const b: QueryResult<typeof Root.prototype, TypeClassByTypename<typeof schema>, typeof a> = {
+export const b: QueryResult<typeof rql._root, TypeClassByTypename<typeof rql._schema>, typeof a> = {
   listFolders: [
     {
       id: '1',
@@ -318,10 +321,10 @@ export const b: QueryResult<typeof Root.prototype, TypeClassByTypename<typeof sc
   ],
 };
 
-type C = Query<typeof Folder, TypeClassByTypename<typeof schema>>;
+type C = Query<typeof Folder, TypeClassByTypename<typeof rql._schema>>;
 export const c = {
   name: true,
   items: { args: { limit: 10, offset: 0 }, query: { name: true } },
 } satisfies C;
 
-export type D = QueryResult<typeof Folder.prototype, TypeClassByTypename<typeof schema>, typeof c>;
+export type D = QueryResult<typeof Folder, TypeClassByTypename<typeof rql._schema>, typeof c>;
