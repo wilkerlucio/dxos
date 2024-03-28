@@ -54,9 +54,155 @@ export class RQL<
   }
 }
 
-// Example
+//
+// Internal Types
+//
+
+// TODO(wittjosiah): Which of these need to be exposed?
+
+type ElementType<T> = T extends (infer U)[] | readonly (infer U)[] ? U : T;
+
+type Object = Record<string | symbol | number, any>;
+
+type MaybePromise<T> = T | Promise<T>;
+
+type Type<T extends string = string> = {
+  // TODO(wittjosiah): This should probably be something like `__typename`.
+  //   Currently using `_tag` because it is provided by @effect/schema already.
+  _tag: T;
+};
+
+type Typename<T> = T extends Type<infer U> ? U : never;
+
+type TypeClass<T extends Type> = {
+  prototype: T;
+  fields: S.Struct.Fields;
+};
+
+type StaticAndInstanceType<T extends TypeClass<any>> = {
+  instance: T['prototype'];
+  static: T;
+};
+
+// For type A | B, this will compute StaticAndInstanceType<A> | StaticAndInstanceType<B>
+// instead of StaticAndInstanceType<A | B>.
+// TODO(wittjosiah): Name.
+type Magic<T> = T extends infer U ? (U extends TypeClass<any> ? StaticAndInstanceType<U> : never) : never;
+
+// TODO(wittjosiah): This needs an explanation.
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
+
+type GroupByTypename<T> =
+  T extends StaticAndInstanceType<infer U>
+    ? U['prototype'] extends Type<infer Tag>
+      ? { [K in Tag]: U }
+      : never
+    : never;
+
+type TypeClassByTypename<T extends TypeClass<any>> = UnionToIntersection<GroupByTypename<Magic<T>>>;
+
+type ClassLookup = TypeClassByTypename<TypeClass<any>>;
+
+type Resolvers<TArgs extends Record<string, S.Schema<any>>, TResults extends S.Struct.Fields> = {
+  // TODO(wittjosiah): Support args of never for no args.
+  [k in keyof Pick<TResults, keyof TArgs>]: (
+    args?: S.Schema.Type<TArgs[k]>,
+  ) => MaybePromise<S.Schema.Type<TResults[k]>>;
+};
+
+type QuerySchema<T, TFields extends S.Struct.Fields, TArgs extends Record<string, S.Schema<any>>> = S.Schema<T> & {
+  args: TArgs;
+  resolvers: Resolvers<TArgs, TFields>;
+  fields: TFields;
+  prototype: T;
+};
+
+type Query<T, TLookup> = TLookup extends ClassLookup
+  ? T extends QuerySchema<infer TSchema, infer TFields, infer TArgs>
+    ? S.Simplify<
+        Partial<{
+          [k in keyof Pick<TFields, keyof TArgs>]: QueryField<
+            ResolverFunction<S.Schema.Type<TArgs[k]>, S.Schema.Type<TFields[k]>>,
+            TLookup
+          >;
+        }> &
+          Partial<{
+            [k in keyof Omit<TSchema, 'args' | 'resolvers' | '_tag' | keyof TArgs>]: QueryField<TSchema[k], TLookup>;
+          }>
+      >
+    : T extends TypeClass<any>
+      ? Query<T['prototype'], TLookup>
+      : T extends Object
+        ? Partial<{ [k in keyof Omit<T, '_tag'>]: QueryField<T[k], TLookup> }>
+        : never
+  : never;
+
+type ResolverFunction<TArgs, TResult> = (args?: TArgs) => MaybePromise<TResult>;
+
+type QueryField<T, TLookup extends ClassLookup> =
+  // TODO(wittjosiah): Never for no args.
+  T extends ResolverFunction<{}, infer TResult>
+    ? QueryResolverResult<TResult, TLookup>
+    : T extends ResolverFunction<infer TArgs, infer TResult>
+      ? ArgsQuery<TArgs, QueryResolverResult<TResult, TLookup>>
+      : T extends any[] | readonly any[]
+        ? QueryField<ElementType<T>, TLookup>
+        : T extends Object
+          ? boolean | Query<T, TLookup>
+          : boolean;
+
+type QueryResolverResult<T, TLookup extends ClassLookup> =
+  ElementType<T> extends Object ? Query<GetClass<ElementType<T>, TLookup>, TLookup> : ElementType<T>;
+
+type GetClass<T, TLookup extends ClassLookup> = Typename<T> extends never ? T : TLookup[Typename<T>];
+
+type ArgsQuery<TArgs, TResult> = { args: TArgs; query: TResult };
+
+type QueryResult<T, TLookup, TQuery extends Object> = TLookup extends ClassLookup
+  ? T extends QuerySchema<any, infer TFields, any>
+    ? Required<{
+        [k in keyof Pick<TFields, keyof TQuery>]: ResultField<S.Schema.Type<TFields[k]>, TLookup, TQuery[k]>;
+      }>
+    : T extends Object
+      ? Required<{
+          [k in keyof Pick<T, keyof TQuery>]: ResultField<T[k], TLookup, TQuery[k]>;
+        }>
+      : never
+  : never;
+
+// TODO(wittjosiah): Why `undefined | unknown`?
+type ResultField<
+  T,
+  TLookup extends ClassLookup,
+  TQuery extends QueryField<T, TLookup> | undefined | unknown,
+> = T extends any[] | readonly any[]
+  ? ResultField<ElementType<T>, TLookup, TQuery>[]
+  : T extends Type
+    ? ResultField<GetClass<T, TLookup>, TLookup, TQuery>
+    : T extends QuerySchema<any, infer TResult, any>
+      ? ResultFieldResolver<S.Schema.Type<S.struct<TResult>>, TLookup, TQuery>
+      : ResultFieldResolver<T, TLookup, TQuery>;
+
+type ResultFieldResolver<
+  TResult,
+  TLookup extends ClassLookup,
+  TQuery extends QueryField<TResult, TLookup> | undefined | unknown,
+> = TResult extends Object
+  ? TQuery extends ArgsQuery<any, infer TQueryResult>
+    ? TQueryResult extends Object
+      ? QueryResult<TResult, TLookup, TQueryResult>
+      : never
+    : TQuery extends Object
+      ? QueryResult<TResult, TLookup, TQuery>
+      : never
+  : TResult;
+
+//
+// Examples
+//
 
 class Section extends S.TaggedClass<Section>()('plugin-stack/section', {
+  // NOTE: Limitation here that `any` is not going to work because it short-circuits all type inference for the query.
   content: S.unknown, // Echo Object
   opened: S.boolean, // Ephemeral state
 }) {}
@@ -145,144 +291,6 @@ export const query = async () => {
 
   return result;
 };
-
-// Internal Types
-
-// TODO(wittjosiah): Which of these need to be exposed?
-
-type ElementType<T> = T extends (infer U)[] | readonly (infer U)[] ? U : T;
-
-type Object = Record<string | symbol | number, any>;
-
-type MaybePromise<T> = T | Promise<T>;
-
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
-
-type Type<T extends string = string> = {
-  _tag: T;
-};
-
-type TypeClass<T extends Type> = {
-  prototype: T;
-  fields: S.Struct.Fields;
-};
-
-type StaticAndInstanceType<T extends TypeClass<any>> = {
-  instance: T['prototype'];
-  static: T;
-};
-
-// For type A | B, this will compute StaticAndInstanceType<A> | StaticAndInstanceType<B>
-// instead of StaticAndInstanceType<A | B>.
-// TODO(wittjosiah): Name.
-type Magic<T> = T extends infer U ? (U extends TypeClass<any> ? StaticAndInstanceType<U> : never) : never;
-
-type Typename<T> = T extends Type<infer U> ? U : never;
-
-type GroupByTypename<T> =
-  T extends StaticAndInstanceType<infer U>
-    ? U['prototype'] extends Type<infer Tag>
-      ? { [K in Tag]: U }
-      : never
-    : never;
-
-type TypeClassByTypename<T extends TypeClass<any>> = UnionToIntersection<GroupByTypename<Magic<T>>>;
-
-type Resolvers<TArgs extends Record<string, S.Schema<any>>, TResults extends S.Struct.Fields> = {
-  // TODO(wittjosiah): Support args of never for no args.
-  [k in keyof Pick<TResults, keyof TArgs>]: (
-    args?: S.Schema.Type<TArgs[k]>,
-  ) => MaybePromise<S.Schema.Type<TResults[k]>>;
-};
-
-type QuerySchema<T, TFields extends S.Struct.Fields, TArgs extends Record<string, S.Schema<any>>> = S.Schema<T> & {
-  args: TArgs;
-  resolvers: Resolvers<TArgs, TFields>;
-  fields: TFields;
-  prototype: T;
-};
-
-type ClassLookup = TypeClassByTypename<TypeClass<any>>;
-
-type Query<T, TLookup> = TLookup extends ClassLookup
-  ? T extends QuerySchema<infer TSchema, infer TFields, infer TArgs>
-    ? S.Simplify<
-        Partial<{
-          [k in keyof Pick<TFields, keyof TArgs>]: QueryField<
-            ResolverFunction<S.Schema.Type<TArgs[k]>, S.Schema.Type<TFields[k]>>,
-            TLookup
-          >;
-        }> &
-          Partial<{
-            [k in keyof Omit<TSchema, 'args' | 'resolvers' | '_tag' | keyof TArgs>]: QueryField<TSchema[k], TLookup>;
-          }>
-      >
-    : T extends TypeClass<any>
-      ? Query<T['prototype'], TLookup>
-      : T extends Object
-        ? Partial<{ [k in keyof Omit<T, '_tag'>]: QueryField<T[k], TLookup> }>
-        : never
-  : never;
-
-type ResolverFunction<TArgs, TResult> = (args?: TArgs) => MaybePromise<TResult>;
-
-type ArgsQuery<TArgs, TResult> = { args: TArgs; query: TResult };
-
-type QueryField<T, TLookup extends ClassLookup> =
-  // TODO(wittjosiah): Never for no args.
-  T extends ResolverFunction<{}, infer TResult>
-    ? QueryResolverResult<TResult, TLookup>
-    : T extends ResolverFunction<infer TArgs, infer TResult>
-      ? ArgsQuery<TArgs, QueryResolverResult<TResult, TLookup>>
-      : T extends any[] | readonly any[]
-        ? QueryField<ElementType<T>, TLookup>
-        : T extends Object
-          ? boolean | Query<T, TLookup>
-          : boolean;
-
-type GetClass<T, TLookup extends ClassLookup> = Typename<T> extends never ? T : TLookup[Typename<T>];
-
-type QueryResolverResult<T, TLookup extends ClassLookup> =
-  ElementType<T> extends Object ? Query<GetClass<ElementType<T>, TLookup>, TLookup> : ElementType<T>;
-
-type QueryResult<T, TLookup, TQuery extends Object> = TLookup extends ClassLookup
-  ? T extends QuerySchema<any, infer TFields, any>
-    ? Required<{
-        [k in keyof Pick<TFields, keyof TQuery>]: ResultField<S.Schema.Type<TFields[k]>, TLookup, TQuery[k]>;
-      }>
-    : T extends Object
-      ? Required<{
-          [k in keyof Pick<T, keyof TQuery>]: ResultField<T[k], TLookup, TQuery[k]>;
-        }>
-      : never
-  : never;
-
-// TODO(wittjosiah): Why `undefined | unknown`?
-type ResultField<
-  T,
-  TLookup extends ClassLookup,
-  TQuery extends QueryField<T, TLookup> | undefined | unknown,
-> = T extends any[] | readonly any[]
-  ? ResultField<ElementType<T>, TLookup, TQuery>[]
-  : T extends Type
-    ? ResultField<GetClass<T, TLookup>, TLookup, TQuery>
-    : T extends QuerySchema<any, infer TResult, any>
-      ? ResultFieldResolver<S.Schema.Type<S.struct<TResult>>, TLookup, TQuery>
-      : ResultFieldResolver<T, TLookup, TQuery>;
-
-type ResultFieldResolver<
-  TResult,
-  TLookup extends ClassLookup,
-  TQuery extends QueryField<TResult, TLookup> | undefined | unknown,
-> = TResult extends Object
-  ? TQuery extends ArgsQuery<any, infer TQueryResult>
-    ? TQueryResult extends Object
-      ? QueryResult<TResult, TLookup, TQueryResult>
-      : never
-    : TQuery extends Object
-      ? QueryResult<TResult, TLookup, TQuery>
-      : never
-  : TResult;
 
 export type L = TypeClassByTypename<ElementType<typeof rql._schema>>;
 export type A = Query<typeof rql._root, TypeClassByTypename<ElementType<typeof rql._schema>>>;
