@@ -18,6 +18,7 @@ export class RQL<
   T extends Object,
   TFields extends S.Struct.Fields,
   TArgs extends Record<string, S.Schema<any>>,
+  TRoot extends QuerySchema<T, TFields, TArgs>,
   TSchema extends TypeClass<any>,
 > {
   _root: RQLOptions<T, TFields, TArgs, TSchema>['root'];
@@ -28,9 +29,9 @@ export class RQL<
     this._schema = schema;
   }
 
-  async query<TQuery extends Query<typeof this._root, TypeClassByTypename<typeof this._schema>>>(
+  async query<TQuery extends Query<TRoot, TypeClassByTypename<TSchema>>>(
     query: TQuery,
-  ): Promise<QueryResult<typeof this._root, TypeClassByTypename<typeof this._schema>, TQuery>> {
+  ): Promise<QueryResult<TRoot, TypeClassByTypename<TSchema>, TQuery>> {
     // TODO(wittjosiah): Make recursive.
     const keys = Object.keys(query);
     const result = keys.reduce(
@@ -46,7 +47,7 @@ export class RQL<
           return acc;
         }
       },
-      {} as QueryResult<typeof this._root, TypeClassByTypename<typeof this._schema>, TQuery>,
+      {} as QueryResult<TRoot, TypeClassByTypename<TSchema>, TQuery>,
     );
 
     return result;
@@ -176,8 +177,6 @@ type StaticAndInstanceType<T extends TypeClass<any>> = {
 // TODO(wittjosiah): Name.
 type Magic<T> = T extends infer U ? (U extends TypeClass<any> ? StaticAndInstanceType<U> : never) : never;
 
-type Prototypes<T extends TypeClass<any>[]> = Magic<ElementType<T>>;
-
 type Typename<T> = T extends Type<infer U> ? U : never;
 
 type GroupByTypename<T> =
@@ -187,7 +186,7 @@ type GroupByTypename<T> =
       : never
     : never;
 
-type TypeClassByTypename<T extends TypeClass<any>[]> = UnionToIntersection<GroupByTypename<Prototypes<T>>>;
+type TypeClassByTypename<T extends TypeClass<any>> = UnionToIntersection<GroupByTypename<Magic<T>>>;
 
 type Resolvers<TArgs extends Record<string, S.Schema<any>>, TResults extends S.Struct.Fields> = {
   // TODO(wittjosiah): Support args of never for no args.
@@ -203,7 +202,7 @@ type QuerySchema<T, TFields extends S.Struct.Fields, TArgs extends Record<string
   prototype: T;
 };
 
-type ClassLookup = TypeClassByTypename<TypeClass<any>[]>;
+type ClassLookup = TypeClassByTypename<TypeClass<any>>;
 
 type Query<T, TLookup> = TLookup extends ClassLookup
   ? T extends QuerySchema<infer TSchema, infer TFields, infer TArgs>
@@ -285,9 +284,9 @@ type ResultFieldResolver<
       : never
   : TResult;
 
-export type L = TypeClassByTypename<typeof rql._schema>;
-export type A = Query<typeof rql._root, TypeClassByTypename<typeof rql._schema>>;
-export type B = QueryResult<typeof rql._root, TypeClassByTypename<typeof rql._schema>, A>;
+export type L = TypeClassByTypename<ElementType<typeof rql._schema>>;
+export type A = Query<typeof rql._root, TypeClassByTypename<ElementType<typeof rql._schema>>>;
+export type B = QueryResult<typeof rql._root, TypeClassByTypename<ElementType<typeof rql._schema>>, A>;
 
 export const a = {
   listFolders: {
@@ -307,7 +306,7 @@ export const a = {
   },
 } satisfies A;
 
-export const b: QueryResult<typeof rql._root, TypeClassByTypename<typeof rql._schema>, typeof a> = {
+export const b: QueryResult<typeof rql._root, TypeClassByTypename<ElementType<typeof rql._schema>>, typeof a> = {
   listFolders: [
     {
       id: '1',
@@ -322,10 +321,10 @@ export const b: QueryResult<typeof rql._root, TypeClassByTypename<typeof rql._sc
   ],
 };
 
-type C = Query<typeof Folder, TypeClassByTypename<typeof rql._schema>>;
+type C = Query<typeof Folder, TypeClassByTypename<ElementType<typeof rql._schema>>>;
 export const c = {
   name: true,
   items: { args: { limit: 10, offset: 0 }, query: { name: true } },
 } satisfies C;
 
-export type D = QueryResult<typeof Folder, TypeClassByTypename<typeof rql._schema>, typeof c>;
+export type D = QueryResult<typeof Folder, TypeClassByTypename<ElementType<typeof rql._schema>>, typeof c>;
