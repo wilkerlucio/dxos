@@ -203,28 +203,27 @@ type QuerySchema<T, TFields extends S.Struct.Fields, TArgs extends Record<string
   prototype: T;
 };
 
-type ClassLookup = Record<string | symbol | number, TypeClass<any>>;
+type ClassLookup = TypeClassByTypename<TypeClass<any>[]>;
 
-type Query<T, TLookup> =
-  TLookup extends TypeClassByTypename<TypeClass<any>[]>
-    ? T extends QuerySchema<infer TSchema, infer TFields, infer TArgs>
-      ? S.Simplify<
+type Query<T, TLookup> = TLookup extends ClassLookup
+  ? T extends QuerySchema<infer TSchema, infer TFields, infer TArgs>
+    ? S.Simplify<
+        Partial<{
+          [k in keyof Pick<TFields, keyof TArgs>]: QueryField<
+            ResolverFunction<S.Schema.Type<TArgs[k]>, S.Schema.Type<TFields[k]>>,
+            TLookup
+          >;
+        }> &
           Partial<{
-            [k in keyof Pick<TFields, keyof TArgs>]: QueryField<
-              ResolverFunction<S.Schema.Type<TArgs[k]>, S.Schema.Type<TFields[k]>>,
-              TLookup
-            >;
-          }> &
-            Partial<{
-              [k in keyof Omit<TSchema, 'args' | 'resolvers' | '_tag' | keyof TArgs>]: QueryField<TSchema[k], TLookup>;
-            }>
-        >
-      : T extends TypeClass<any>
-        ? Query<T['prototype'], TLookup>
-        : T extends Object
-          ? Partial<{ [k in keyof Omit<T, '_tag'>]: QueryField<T[k], TLookup> }>
-          : never
-    : never;
+            [k in keyof Omit<TSchema, 'args' | 'resolvers' | '_tag' | keyof TArgs>]: QueryField<TSchema[k], TLookup>;
+          }>
+      >
+    : T extends TypeClass<any>
+      ? Query<T['prototype'], TLookup>
+      : T extends Object
+        ? Partial<{ [k in keyof Omit<T, '_tag'>]: QueryField<T[k], TLookup> }>
+        : never
+  : never;
 
 type ResolverFunction<TArgs, TResult> = (args?: TArgs) => MaybePromise<TResult>;
 
@@ -247,18 +246,17 @@ type GetClass<T, TLookup extends ClassLookup> = Typename<T> extends never ? T : 
 type QueryResolverResult<T, TLookup extends ClassLookup> =
   ElementType<T> extends Object ? Query<GetClass<ElementType<T>, TLookup>, TLookup> : ElementType<T>;
 
-type QueryResult<T, TLookup, TQuery extends Object> =
-  TLookup extends TypeClassByTypename<TypeClass<any>[]>
-    ? T extends QuerySchema<any, infer TFields, any>
+type QueryResult<T, TLookup, TQuery extends Object> = TLookup extends ClassLookup
+  ? T extends QuerySchema<any, infer TFields, any>
+    ? Required<{
+        [k in keyof Pick<TFields, keyof TQuery>]: ResultField<S.Schema.Type<TFields[k]>, TLookup, TQuery[k]>;
+      }>
+    : T extends Object
       ? Required<{
-          [k in keyof Pick<TFields, keyof TQuery>]: ResultField<S.Schema.Type<TFields[k]>, TLookup, TQuery[k]>;
+          [k in keyof Pick<T, keyof TQuery>]: ResultField<T[k], TLookup, TQuery[k]>;
         }>
-      : T extends Object
-        ? Required<{
-            [k in keyof Pick<T, keyof TQuery>]: ResultField<T[k], TLookup, TQuery[k]>;
-          }>
-        : never
-    : never;
+      : never
+  : never;
 
 // TODO(wittjosiah): Why `undefined | unknown`?
 type ResultField<
