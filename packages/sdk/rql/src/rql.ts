@@ -4,6 +4,8 @@
 
 import * as S from '@effect/schema/Schema';
 
+import { invariant } from '@dxos/invariant';
+
 export type RQLOptions<
   T extends Object,
   TFields extends S.Struct.Fields,
@@ -32,27 +34,66 @@ export class RQL<
   async query<TQuery extends Query<TRoot, TypeClassByTypename<TSchema>>>(
     query: TQuery,
   ): Promise<QueryResult<TRoot, TypeClassByTypename<TSchema>, TQuery>> {
-    // TODO(wittjosiah): Make recursive.
-    const keys = Object.keys(query);
-    const result = keys.reduce(
-      (acc, key) => {
-        const resolver = this._root.resolvers[key];
-        const argsSchema = this._root.args[key];
-        const resultSchema = this._root.fields[key];
-        const args = query[key];
-        if (!!resolver && resultSchema && argsSchema && args) {
-          // TODO(wittjosiah): Validate args. Call resolver. Validate result.
-          return { ...acc, [key]: key as any };
-        } else {
-          return acc;
-        }
-      },
-      {} as QueryResult<TRoot, TypeClassByTypename<TSchema>, TQuery>,
-    );
-
-    return result;
+    return resolve({
+      query,
+      args: this._root.args,
+      resolvers: this._root.resolvers,
+      fields: this._root.fields,
+    });
   }
 }
+
+const resolve = async ({
+  query,
+  args,
+  fields,
+  resolvers,
+}: {
+  query: Record<string, any>;
+  args: Record<string, S.Schema<any>>;
+  resolvers: Record<string, any>;
+  fields: S.Struct.Fields;
+}) => {
+  // Steps
+  // 1. Get all keys in the query.
+  // 2. For each key, determine whether its resolved field or an instrinsic field.
+  // 3. For each key associated with a resolved field, get any args from the
+  //    query and get the schema for the args and validate the args.
+  // 4. For each key associated with a resolved field, find the associated
+  //    resolver and call the resolver with the validated args.
+  // 5. ***** Determine sub-schemas which still need resolution.
+  // 6. ***** For each sub-schema, get sub-queries, args, fields, and resolvers,
+  //    then recurse (mapping over an array if necessary).
+  // 7. Validate the resolved results. (Try to find ways to avoid validating the
+  //    same data multiple times when recursing.)
+  // 8. Stitch nest results together.
+  // 9. Return the result.
+
+  const keys = Object.keys(query); // 1
+  const results = await Promise.all(
+    keys.map(async (key) => {
+      const resolver = resolvers[key]; // 2
+      if (!resolver) {
+        return [key, undefined];
+      }
+
+      const argsSchema = args[key];
+      const queryArgs = query[key]?.args; // 3
+      invariant(argsSchema, `Missing schema for args of field: ${key}`);
+      const result = (await S.validate(argsSchema)(queryArgs)) ? await resolver(queryArgs) : await resolver(); // 4
+
+      // TODO(wittjosiah): 5/6.
+
+      const resultSchema = fields[key];
+      invariant(resultSchema, `Missing schema for field: ${key}`);
+      const validatedResult = await S.validate(resultSchema)(result); // 7
+
+      return [key, validatedResult];
+    }),
+  );
+
+  return Object.fromEntries(results);
+};
 
 //
 // Internal Types
@@ -137,7 +178,7 @@ type Query<T, TLookup> = TLookup extends ClassLookup
         : never
   : never;
 
-type ResolverFunction<TArgs, TResult> = (args?: TArgs) => MaybePromise<TResult>;
+type ResolverFunction<TArgs, TResult> = (args?: TArgs) => MaybePromise<Partial<TResult>>;
 
 type QueryField<T, TLookup extends ClassLookup> =
   // TODO(wittjosiah): Never for no args.
