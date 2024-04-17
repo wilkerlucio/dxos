@@ -5,17 +5,17 @@
 import { expect } from 'chai';
 
 import { Trigger } from '@dxos/async';
-import { TaggedType } from '@dxos/codec-protobuf';
+import { type TaggedType } from '@dxos/codec-protobuf';
 import { PublicKey } from '@dxos/keys';
 import { Messenger, WebsocketSignalManager } from '@dxos/messaging';
-import { TYPES } from '@dxos/protocols';
+import { type TYPES } from '@dxos/protocols';
 
 const SIGNAL_SERVER =
   process.env.DX_ENVIRONMENT === 'development'
     ? 'wss://dev.kube.dxos.org/.well-known/dx/signal'
     : process.env.DX_ENVIRONMENT === 'staging'
-    ? 'wss://staging.kube.dxos.org/.well-known/dx/signal'
-    : 'wss://kube.dxos.org/.well-known/dx/signal';
+      ? 'wss://staging.kube.dxos.org/.well-known/dx/signal'
+      : 'wss://kube.dxos.org/.well-known/dx/signal';
 
 const PAYLOAD_1: TaggedType<TYPES, 'google.protobuf.Any'> = {
   '@type': 'google.protobuf.Any',
