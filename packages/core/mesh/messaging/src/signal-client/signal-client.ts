@@ -119,7 +119,6 @@ export class SignalClient implements SignalMethods {
 
   /**
    * @param _host Signal server websocket URL.
-   * @param _onMessage
    */
   constructor(
     private readonly _host: string,
@@ -306,7 +305,6 @@ export class SignalClient implements SignalMethods {
               this._incrementReconnectTimeout();
             }
             this._setState(SignalState.ERROR);
-
             this._reconnectTask!.schedule();
           },
           getMetadata: this._getMetadata,
@@ -381,6 +379,7 @@ export class SignalClient implements SignalMethods {
         cancelWithContext(this._connectionCtx!, client.join({ topic, peerId })),
         5000,
       );
+
       // Subscribing to swarm events.
       // TODO(mykola): What happens when the swarm stream is closed? Maybe send leave event for each peer?
       swarmStream.subscribe(async (swarmEvent: SwarmEvent) => {

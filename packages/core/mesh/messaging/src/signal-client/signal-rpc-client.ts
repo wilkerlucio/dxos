@@ -14,7 +14,7 @@ import { schema, trace } from '@dxos/protocols';
 import { type Message as SignalMessage, type Signal } from '@dxos/protocols/proto/dxos/mesh/signal';
 import { createProtoRpcPeer, type ProtoRpcPeer } from '@dxos/rpc';
 
-const SIGNAL_KEEPALIVE_INTERVAL = 10000;
+const SIGNAL_KEEPALIVE_INTERVAL = 10_000;
 
 interface Services {
   Signal: Signal;
@@ -38,17 +38,21 @@ export type SignalRPCClientParams = {
   callbacks?: SignalCallbacks;
 };
 
+/**
+ * Web socket connected to RPC service.
+ * Relays SDP candidate and ICE messages.
+ */
 export class SignalRPCClient {
-  private _socket?: WebSocket;
-  private _rpc?: ProtoRpcPeer<Services>;
   private readonly _connectTrigger = new Trigger();
-  private _keepaliveCtx?: Context;
-
-  private _closed = false;
+  private readonly _closeComplete = new Trigger();
 
   private readonly _url: string;
   private readonly _callbacks: SignalCallbacks;
-  private readonly _closeComplete = new Trigger();
+  private readonly _socket: WebSocket;
+  private readonly _rpc?: ProtoRpcPeer<Services>;
+
+  private _keepaliveCtx?: Context;
+  private _closed = false;
 
   constructor({ url, callbacks = {} }: SignalRPCClientParams) {
     const traceId = PublicKey.random().toHex();
@@ -56,38 +60,6 @@ export class SignalRPCClient {
     this._url = url;
     this._callbacks = callbacks;
     this._socket = new WebSocket(this._url);
-
-    this._rpc = createProtoRpcPeer({
-      requested: {
-        Signal: schema.getService('dxos.mesh.signal.Signal'),
-      },
-      noHandshake: true,
-      port: {
-        send: (msg) => {
-          if (this._closed) {
-            // Do not send messages after close.
-            return;
-          }
-          try {
-            this._socket!.send(msg);
-          } catch (err) {
-            log.warn('send error', err);
-          }
-        },
-        subscribe: (cb) => {
-          this._socket!.onmessage = async (msg: WebSocket.MessageEvent) => {
-            if (typeof Blob !== 'undefined' && msg.data instanceof Blob) {
-              cb(Buffer.from(await msg.data.arrayBuffer()));
-            } else {
-              cb(msg.data as any);
-            }
-          };
-        },
-      },
-      encodingOptions: {
-        preserveAny: true,
-      },
-    });
 
     this._socket.onopen = async () => {
       try {
@@ -132,11 +104,44 @@ export class SignalRPCClient {
         await this._rpc?.close();
       } catch (err) {
         log.catch(err);
+      } finally {
+        this._closed = true;
       }
-      this._closed = true;
 
       log.warn(event.message ?? 'Socket error', { url: this._url });
     };
+
+    this._rpc = createProtoRpcPeer({
+      requested: {
+        Signal: schema.getService('dxos.mesh.signal.Signal'),
+      },
+      noHandshake: true,
+      port: {
+        send: (msg) => {
+          if (this._closed) {
+            // Do not send messages after close.
+            return;
+          }
+          try {
+            this._socket!.send(msg);
+          } catch (err) {
+            log.warn('send error', err);
+          }
+        },
+        subscribe: (cb) => {
+          this._socket!.onmessage = async (msg: WebSocket.MessageEvent) => {
+            if (typeof Blob !== 'undefined' && msg.data instanceof Blob) {
+              cb(Buffer.from(await msg.data.arrayBuffer()));
+            } else {
+              cb(msg.data as any);
+            }
+          };
+        },
+      },
+      encodingOptions: {
+        preserveAny: true,
+      },
+    });
 
     log.trace('dxos.mesh.signal-rpc-client.constructor', trace.end({ id: traceId }));
   }
@@ -146,11 +151,11 @@ export class SignalRPCClient {
     this._closed = true;
     try {
       await this._rpc?.close();
-
       if (this._socket?.readyState === WebSocket.OPEN || this._socket?.readyState === WebSocket.CONNECTING) {
         // close() only starts the closing handshake.
         this._socket.close();
       }
+
       await this._closeComplete.wait({ timeout: 1_000 });
     } catch (err) {
       log.warn('close error', err);
@@ -161,7 +166,7 @@ export class SignalRPCClient {
     log('join', { topic, peerId });
     await this._connectTrigger.wait();
     invariant(!this._closed, 'SignalRPCClient is closed');
-    invariant(this._rpc, 'Rpc is not initialized');
+    invariant(this._rpc, 'RPC is not initialized');
     const swarmStream = this._rpc.rpc.Signal.join({
       swarm: topic.asUint8Array(),
       peer: peerId.asUint8Array(),
@@ -175,7 +180,7 @@ export class SignalRPCClient {
     log('receiveMessages', { peerId });
     invariant(!this._closed, 'SignalRPCClient is closed');
     await this._connectTrigger.wait();
-    invariant(this._rpc, 'Rpc is not initialized');
+    invariant(this._rpc, 'RPC is not initialized');
     const messageStream = this._rpc.rpc.Signal.receiveMessages({
       peer: peerId.asUint8Array(),
     });
@@ -187,7 +192,7 @@ export class SignalRPCClient {
     log('sendMessage', { author, recipient, payload });
     invariant(!this._closed, 'SignalRPCClient is closed');
     await this._connectTrigger.wait();
-    invariant(this._rpc, 'Rpc is not initialized');
+    invariant(this._rpc, 'RPC is not initialized');
     await this._rpc.rpc.Signal.sendMessage({
       author: author.asUint8Array(),
       recipient: recipient.asUint8Array(),

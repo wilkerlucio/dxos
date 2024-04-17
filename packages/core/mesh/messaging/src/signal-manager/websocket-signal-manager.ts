@@ -160,6 +160,7 @@ export class WebsocketSignalManager implements SignalManager {
       this.failureCount.set(serverName!, 0);
       return;
     }
+
     this.failureCount.set(serverName!, (this.failureCount.get(serverName!) ?? 0) + 1);
   }
 

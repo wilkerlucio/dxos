@@ -9,7 +9,6 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
-
 package dxos.mesh.signal;
 
 option go_package = "github.com/dxos/kube/proto/def/dxos/mesh/signal";
@@ -63,11 +62,11 @@ message SwarmEvent {
 /// Goes on a Pub/Sub host topic.
 message HostEvent {
   message AnnounceBack {
-      bytes swarm = 1;
-      SwarmEvent.PeerAvailable peer_available = 2;
+    bytes swarm = 1;
+    SwarmEvent.PeerAvailable peer_available = 2;
   }
   oneof event {
-      AnnounceBack announce_back = 1;
+    AnnounceBack announce_back = 1;
   }
 }
 
