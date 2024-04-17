@@ -4,6 +4,8 @@
 
 import { type Connection, type Request, type Room, type Server } from 'partykit/server';
 
+import { log } from '@dxos/log';
+
 // https://docs.partykit.io/glossary/#durable-object
 // Durable object: A piece of code running at the edge (worker) with persistent state that is infinitely scaleable (from Cloudflare). It is best suited for real time collaborative applications. Learn more.
 // Party: A single server instance - in other words, a single Durable Object.
@@ -27,11 +29,6 @@ import { type Connection, type Request, type Room, type Server } from 'partykit/
 // CLOUDFLARE_ACCOUNT_ID=<your account id> CLOUDFLARE_API_TOKEN=<your api token> npx partykit deploy --domain signaling.dxos.network
 
 // TODO(burdon): Experimental (move to closed source)?
-
-// eslint-disable-next-line no-console
-const log = console.log;
-// eslint-disable-next-line no-console
-const warn = console.warn;
 
 /**
  * `npx partykit dev`
@@ -67,7 +64,7 @@ export default class SignalingServer implements Server {
   // }
 
   onStart() {
-    log('start', { room: this.room?.id });
+    log.info('start', { room: this.room?.id });
   }
 
   /**
@@ -88,7 +85,7 @@ export default class SignalingServer implements Server {
   }
 
   onError(connection: Connection, error: Error) {
-    warn('error', { room: this.room?.id, peer: connection.id, error });
+    log.error('error', { room: this.room?.id, peer: connection.id, error });
   }
 
   onMessage(data: string, connection: Connection) {
@@ -101,7 +98,7 @@ export default class SignalingServer implements Server {
       this.room.broadcast(data, [connection.id]);
     } catch (err) {
       // TODO(burdon): Test if uncaught errors fire the onError handler?
-      warn('error', { room: this.room?.id, peer: connection.id, error: err });
+      log.error('error', { room: this.room?.id, peer: connection.id, error: err });
     }
   }
 

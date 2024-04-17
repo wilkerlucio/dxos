@@ -90,7 +90,9 @@ const main = () => {
   const root = createRoot(document.getElementById('root')!);
   root.render(
     <StrictMode>
-      <BaselimeRum apiKey={config?.runtime?.app?.env?.BASELIME_API_KEY} enableWebVitals>
+      {/* https://baselime.io/docs/sending-data/react-rum */}
+      {/* TODO(burdon): https://web.dev/articles/vitals */}
+      <BaselimeRum enableWebVitals={true} apiKey={config?.runtime?.app?.env?.BASELIME_API_KEY} dataset='testing'>
         <App />
       </BaselimeRum>
     </StrictMode>,
