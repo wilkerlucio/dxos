@@ -298,7 +298,7 @@ describe('Spaces', () => {
     }, 1000);
     expect(space.db.getObjectById(id)).to.exist;
 
-    space.db.getObjectById<ReactiveObject<any>>(id)!.data = 'test2';
+    space.db.getObjectById(id)!.data = 'test2';
     await space.db.flush();
   });
 
@@ -345,7 +345,7 @@ describe('Spaces', () => {
     }, 1000);
     expect(space2.db.getObjectById(id)).to.exist;
 
-    space2.db.getObjectById<ReactiveObject<any>>(id)!.data = 'test2';
+    space2.db.getObjectById(id)!.data = 'test2';
     await space2.db.flush();
   });
 
@@ -527,7 +527,7 @@ describe('Spaces', () => {
   };
 
   const registerTypes = (client: Client) => {
-    client.addSchema(DocumentType);
+    client.addSchema(DocumentType, TextV0Type);
   };
 
   const createDocument = (): ReactiveObject<DocumentType> => {

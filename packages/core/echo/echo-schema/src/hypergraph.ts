@@ -14,8 +14,9 @@ import { ComplexMap, WeakDictionary, entry } from '@dxos/util';
 
 import { type AutomergeDb, type ItemsUpdatedEvent } from './automerge';
 import { type EchoDatabase, type EchoDatabaseImpl } from './database';
+import { type EchoReactiveObject } from './effect/reactive';
 import { prohibitSignalActions } from './guarded-scope';
-import { type OpaqueEchoObject, type EchoObject } from './object';
+import { type EchoObject } from './object';
 import {
   Filter,
   Query,
@@ -25,7 +26,7 @@ import {
   type QueryResult,
   type QuerySource,
 } from './query';
-import { TypeCollection } from './type-collection';
+import { RuntimeSchemaRegistry } from './runtime-schema-registry';
 
 /**
  * Manages cross-space database interactions.
@@ -34,19 +35,17 @@ export class Hypergraph {
   private readonly _databases = new ComplexMap<PublicKey, EchoDatabaseImpl>(PublicKey.hash);
   // TODO(burdon): Rename.
   private readonly _owningObjects = new ComplexMap<PublicKey, unknown>(PublicKey.hash);
-  private readonly _types = new TypeCollection();
+  private readonly _runtimeSchemaRegistry = new RuntimeSchemaRegistry();
   private readonly _updateEvent = new Event<ItemsUpdatedEvent>();
-  private readonly _resolveEvents = new ComplexMap<PublicKey, Map<string, Event<OpaqueEchoObject>>>(PublicKey.hash);
+  private readonly _resolveEvents = new ComplexMap<PublicKey, Map<string, Event<EchoReactiveObject<any>>>>(
+    PublicKey.hash,
+  );
+
   private readonly _queryContexts = new WeakDictionary<{}, GraphQueryContext>();
   private readonly _querySourceProviders: QuerySourceProvider[] = [];
 
-  get types(): TypeCollection {
-    return this._types;
-  }
-
-  addTypes(types: TypeCollection) {
-    this._types.mergeSchema(types);
-    return this;
+  get runtimeSchemaRegistry(): RuntimeSchemaRegistry {
+    return this._runtimeSchemaRegistry;
   }
 
   /**
@@ -88,7 +87,7 @@ export class Hypergraph {
   /**
    * Filter by type.
    */
-  query<T extends OpaqueEchoObject>(filter?: FilterSource<T>, options?: QueryOptions): Query<T> {
+  query<T extends EchoReactiveObject<any>>(filter?: FilterSource<T>, options?: QueryOptions): Query<T> {
     const spaces = options?.spaces;
     invariant(!spaces || spaces.every((space) => space instanceof PublicKey), 'Invalid spaces filter');
     return new Query(this._createQueryContext(), Filter.from(filter, options));
@@ -101,8 +100,8 @@ export class Hypergraph {
   _lookupLink(
     ref: Reference,
     from: EchoDatabase | AutomergeDb,
-    onResolve: (obj: OpaqueEchoObject) => void,
-  ): OpaqueEchoObject | undefined {
+    onResolve: (obj: EchoReactiveObject<any>) => void,
+  ): EchoReactiveObject<any> | undefined {
     if (ref.host === undefined) {
       const local = from.getObjectById(ref.itemId);
       if (local) {

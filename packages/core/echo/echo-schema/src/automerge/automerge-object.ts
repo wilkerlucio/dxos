@@ -8,13 +8,12 @@ import { type AutomergeObjectCore } from './automerge-object-core';
 import { type DocAccessor } from './automerge-types';
 import { isValidKeyPath, type KeyPath } from './key-path';
 import type * as echoHandlerModule from '../effect/echo-handler'; // Keep as type-only import.
-import { getProxyHandlerSlot, isReactiveProxy } from '../effect/proxy';
-import { type ReactiveObject } from '../effect/reactive';
-import { type OpaqueEchoObject } from '../object';
+import { getProxyHandlerSlot, isReactiveObject } from '../effect/proxy';
+import { type EchoReactiveObject } from '../effect/reactive';
 
 // TODO(wittjosiah): `path` should be `keyof T`.
-export const createDocAccessor = <T>(obj: ReactiveObject<T>, path: KeyPath): DocAccessor => {
-  invariant(isReactiveProxy(obj));
+export const createDocAccessor = <T>(obj: EchoReactiveObject<T>, path: KeyPath): DocAccessor => {
+  invariant(isReactiveObject(obj));
   invariant(path === undefined || isValidKeyPath(path));
 
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -23,7 +22,7 @@ export const createDocAccessor = <T>(obj: ReactiveObject<T>, path: KeyPath): Doc
   return core.getDocAccessor(path);
 };
 
-export const getAutomergeObjectCore = (obj: OpaqueEchoObject): AutomergeObjectCore => {
+export const getAutomergeObjectCore = <T>(obj: EchoReactiveObject<T>): AutomergeObjectCore => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { getObjectCoreFromEchoTarget }: typeof echoHandlerModule = require('../effect/echo-handler');
   return getObjectCoreFromEchoTarget(getProxyHandlerSlot(obj).target as any);

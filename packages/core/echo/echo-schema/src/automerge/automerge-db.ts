@@ -24,10 +24,10 @@ import { getAutomergeObjectCore } from './automerge-object';
 import { AutomergeObjectCore } from './automerge-object-core';
 import { getInlineAndLinkChanges } from './utils';
 import { type EchoDatabase } from '../database';
-import { isReactiveProxy } from '../effect/proxy';
-import { isEchoReactiveObject } from '../effect/reactive';
+import { isReactiveObject } from '../effect/proxy';
+import { isEchoObject, type EchoReactiveObject } from '../effect/reactive';
 import { type Hypergraph } from '../hypergraph';
-import { type EchoObject, type OpaqueEchoObject } from '../object';
+import { type EchoObject } from '../object';
 
 export type InitRootProxyFn = (core: AutomergeObjectCore) => void;
 
@@ -194,7 +194,7 @@ export class AutomergeDb {
     }
 
     const root = objCore.rootProxy;
-    invariant(isReactiveProxy(root));
+    invariant(isReactiveObject(root));
     return root as any;
   }
 
@@ -256,13 +256,13 @@ export class AutomergeDb {
     }
   }
 
-  add(obj: OpaqueEchoObject) {
+  add(obj: EchoReactiveObject<any>) {
     const core = getAutomergeObjectCore(obj);
     this.addCore(core);
     return obj;
   }
 
-  remove(obj: OpaqueEchoObject) {
+  remove(obj: EchoReactiveObject<any>) {
     const core = getAutomergeObjectCore(obj);
     invariant(this._objects.has(core.id));
     core.setDeleted(true);
@@ -459,7 +459,7 @@ export interface ItemsUpdatedEvent {
 }
 
 export const shouldObjectGoIntoFragmentedSpace = (core: AutomergeObjectCore) => {
-  if (isEchoReactiveObject(core.rootProxy)) {
+  if (isEchoObject(core.rootProxy)) {
     // NOTE: We need to store properties in the root document since space-list initialization
     //  expects it to be loaded as space become available.
     if (core.getType()?.itemId === TYPE_PROPERTIES) {
@@ -479,7 +479,7 @@ export const shouldObjectGoIntoFragmentedSpace = (core: AutomergeObjectCore) => 
  *                        otherwise the method exits when valueAccessor is not null.
  * @param timeout - loading timeout, defaults to 5s.
  */
-export const loadObjectReferences = async <T extends OpaqueEchoObject, U>(
+export const loadObjectReferences = async <T extends EchoReactiveObject<any>, U>(
   objOrArray: T | T[],
   valueAccessor: (obj: T) => U,
   { timeout }: { timeout: number } = { timeout: 5000 },

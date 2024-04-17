@@ -18,24 +18,20 @@ export {
   DocAccessor,
   getMeta,
   getSchema,
-  typeOf,
-  isEchoReactiveObject,
+  getType,
   Expando,
   create,
-  TextCompatibilitySchema,
+  isEchoObject,
+  RuntimeSchemaRegistry,
   type EchoReactiveObject,
   type ReactiveObject,
   type EchoDatabase,
   type EchoObject, // TODO(burdon): Remove from API.
   type FilterSource,
   type ObjectMeta,
-  type OpaqueEchoObject,
   type Selection,
   type Subscription,
   type SubscriptionHandle,
-
-  // TODO(burdon): Deprecated.
-  TypeCollection,
 } from '@dxos/echo-schema';
 
 export { IndexKind } from '@dxos/protocols/proto/dxos/echo/indexing';

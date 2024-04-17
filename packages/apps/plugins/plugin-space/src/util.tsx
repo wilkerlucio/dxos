@@ -20,17 +20,10 @@ import { batch, effect } from '@preact/signals-core';
 import React from 'react';
 
 import { actionGroupSymbol, type InvokeParams, type Graph, type Node, manageNodes } from '@braneframe/plugin-graph';
-import { cloneObject, getSpaceProperty, FolderType } from '@braneframe/types';
+import { cloneObject, getSpaceProperty, FolderType, TextV0Type } from '@braneframe/types';
 import { NavigationAction, type IntentDispatcher, type MetadataResolver } from '@dxos/app-framework';
 import { type UnsubscribeCallback } from '@dxos/async';
-import {
-  Filter,
-  LEGACY_TEXT_TYPE,
-  type OpaqueEchoObject,
-  type EchoReactiveObject,
-  isEchoReactiveObject,
-  typeOf,
-} from '@dxos/echo-schema';
+import { Filter, type EchoReactiveObject, isEchoObject, isReactiveObject } from '@dxos/echo-schema';
 import { create } from '@dxos/echo-schema';
 import { Migrations } from '@dxos/migrations';
 import { SpaceState, getSpace, type Space } from '@dxos/react-client/echo';
@@ -59,7 +52,7 @@ const getFolderGraphNodePartials = ({ graph, folder, space }: { graph: Graph; fo
     role: 'branch',
     onRearrangeChildren: (nextOrder: unknown[]) => {
       // Change on disk.
-      folder.objects = nextOrder.filter(isEchoReactiveObject);
+      folder.objects = nextOrder.filter(isEchoObject);
     },
     onTransferStart: (child: Node<EchoReactiveObject<any>>) => {
       // TODO(wittjosiah): Support transfer between spaces.
@@ -321,8 +314,8 @@ export const updateGraphWithSpace = ({
 
   // Update graph with all objects in the space.
   // TODO(wittjosiah): If text objects are included in this query then it updates on every keystroke in the editor.
-  const query = space.db.query((obj: OpaqueEchoObject) => {
-    if (typeOf(obj)?.itemId === LEGACY_TEXT_TYPE) {
+  const query = space.db.query((obj: EchoReactiveObject<any>) => {
+    if (obj instanceof TextV0Type) {
       return false;
     }
 
@@ -597,7 +590,7 @@ export const getActiveSpace = (graph: Graph, active?: string) => {
   }
 
   const node = graph.findNode(active);
-  if (!node || !isEchoReactiveObject(node.data)) {
+  if (!node || !isReactiveObject(node.data)) {
     return;
   }
 
