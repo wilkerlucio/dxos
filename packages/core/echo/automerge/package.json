@@ -148,7 +148,7 @@
     "debug": "^4.3.4",
     "eventemitter3": "^5.0.1",
     "fast-sha256": "^1.3.0",
-    "xstate": "^5.9.1"
+    "xstate": "^5.12.0"
   },
   "devDependencies": {
     "@automerge/automerge": "^2.2.0",

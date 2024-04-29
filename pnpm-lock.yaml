@@ -5079,7 +5079,7 @@ importers:
         version: 1.5.4
       debug:
         specifier: ^4.3.4
-        version: 4.3.4(supports-color@8.1.1)
+        version: 4.3.4
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
@@ -5087,7 +5087,7 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0
       xstate:
-        specifier: ^5.9.1
+        specifier: ^5.12.0
         version: 5.12.0
     devDependencies:
       '@automerge/automerge':
@@ -5095,16 +5095,16 @@ importers:
         version: 2.2.1
       '@automerge/automerge-repo':
         specifier: ^1.1.9
-        version: 1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2)
+        version: 1.1.9
       '@automerge/automerge-repo-network-broadcastchannel':
         specifier: ^1.1.9
-        version: 1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2)
+        version: 1.1.9
       '@automerge/automerge-repo-network-websocket':
         specifier: ^1.1.9
-        version: 1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2)
+        version: 1.1.9
       '@automerge/automerge-repo-storage-indexeddb':
         specifier: ^1.1.9
-        version: 1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2)
+        version: 1.1.9
 
   packages/core/echo/echo-db:
     dependencies:
@@ -8587,8 +8587,8 @@ importers:
         specifier: ^3.1.1
         version: 3.1.1(react@18.2.0)
       '@xstate/react':
-        specifier: ^3.2.1
-        version: 3.2.1(@types/react@18.0.21)(react@18.2.0)(xstate@4.37.1)
+        specifier: ^4.1.1
+        version: 4.1.1(@types/react@18.0.21)(react@18.2.0)(xstate@5.12.0)
       date-fns:
         specifier: ^3.3.1
         version: 3.3.1
@@ -8602,8 +8602,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
       xstate:
-        specifier: ^4.37.0
-        version: 4.37.1
+        specifier: ^5.12.0
+        version: 5.12.0
     devDependencies:
       '@dxos/config':
         specifier: workspace:*
@@ -8640,7 +8640,7 @@ importers:
         version: 18.2.0(react@18.2.0)
       vite:
         specifier: ^5.2.9
-        version: 5.2.9(@types/node@18.11.9)
+        version: 5.2.9
       vite-plugin-turbosnap:
         specifier: ^1.0.2
         version: 1.0.2
@@ -10468,10 +10468,10 @@ packages:
       leven: 3.1.0
     dev: true
 
-  /@automerge/automerge-repo-network-broadcastchannel@1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2):
+  /@automerge/automerge-repo-network-broadcastchannel@1.1.9:
     resolution: {integrity: sha512-uPjCdKhenqT89oezT91uwmDQoJcxsGxosJHrfWJUlSLTkMyy4QI+tGKIfvpQQ9Vxkp4M+7CKaAhVYf+TbreXYw==}
     dependencies:
-      '@automerge/automerge-repo': 1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2)
+      '@automerge/automerge-repo': 1.1.9
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
@@ -10480,12 +10480,12 @@ packages:
       - typescript
     dev: true
 
-  /@automerge/automerge-repo-network-websocket@1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2):
+  /@automerge/automerge-repo-network-websocket@1.1.9:
     resolution: {integrity: sha512-y5YcS2LtYZuHEaqwcMWiH6Z7ufXjoW/JavnXqt1jS7vAsaIx8h2E+gqccbgt1WGa02DLxul/+vhs7IzvzeBCZQ==}
     dependencies:
-      '@automerge/automerge-repo': 1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2)
+      '@automerge/automerge-repo': 1.1.9
       cbor-x: 1.5.4
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       eventemitter3: 5.0.1
       isomorphic-ws: 5.0.0(ws@8.14.2)
       ws: 8.14.2
@@ -10499,10 +10499,10 @@ packages:
       - utf-8-validate
     dev: true
 
-  /@automerge/automerge-repo-storage-indexeddb@1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2):
+  /@automerge/automerge-repo-storage-indexeddb@1.1.9:
     resolution: {integrity: sha512-y/9nxCXZNWnnLM30ClaJ12wKB3Cotqw8i011zRB6mKB6cmy9l3QV7hK2d34ReEdRlmJ7gmO54kMvNnmBKcmmeA==}
     dependencies:
-      '@automerge/automerge-repo': 1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2)
+      '@automerge/automerge-repo': 1.1.9
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
@@ -10511,17 +10511,17 @@ packages:
       - typescript
     dev: true
 
-  /@automerge/automerge-repo@1.1.9(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2):
+  /@automerge/automerge-repo@1.1.9:
     resolution: {integrity: sha512-rh8PEgC0tDULrfnS5Gcq0U8yxqU0kuwcfx/JkQnOtp0FU/1IoalGAc3qgvceruRMOrzfXaktZ/r9a13I5UtiTQ==}
     dependencies:
       '@automerge/automerge': 2.2.1
       bs58check: 3.0.1
       cbor-x: 1.5.4
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       eventemitter3: 5.0.1
       fast-sha256: 1.3.0
       tiny-typed-emitter: 2.1.0
-      ts-node: 10.9.1(patch_hash=rke3py7up3u364r7wwqfla7cdm)(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2)
+      ts-node: 10.9.1(patch_hash=rke3py7up3u364r7wwqfla7cdm)
       uuid: 9.0.1
       xstate: 5.12.0
     transitivePeerDependencies:
@@ -10663,7 +10663,7 @@ packages:
       '@babel/traverse': 7.23.9
       '@babel/types': 7.23.9
       convert-source-map: 2.0.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -13219,7 +13219,7 @@ packages:
       '@babel/helper-split-export-declaration': 7.22.6
       '@babel/parser': 7.23.9
       '@babel/types': 7.23.9
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -25399,7 +25399,7 @@ packages:
       '@babel/plugin-transform-react-jsx-source': 7.23.3(@babel/core@7.23.9)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.0
-      vite: 5.2.9(@types/node@18.11.9)
+      vite: 5.2.9
     transitivePeerDependencies:
       - supports-color
 
@@ -26099,22 +26099,19 @@ packages:
     resolution: {integrity: sha512-9E61voMP4+Rze02jlTXud++Htpjyyk8vw5Hyw9FGRrmhHQg2GqbuOfwf5Klrb8vTxc2XWI3EfO7RUHMpxTj26A==}
     dev: false
 
-  /@xstate/react@3.2.1(@types/react@18.0.21)(react@18.2.0)(xstate@4.37.1):
-    resolution: {integrity: sha512-L/mqYRxyBWVdIdSaXBHacfvS8NKn3sTKbPb31aRADbE9spsJ1p+tXil0GVQHPlzrmjGeozquLrxuYGiXsFNU7g==}
+  /@xstate/react@4.1.1(@types/react@18.0.21)(react@18.2.0)(xstate@5.12.0):
+    resolution: {integrity: sha512-pFp/Y+bnczfaZ0V8B4LOhx3d6Gd71YKAPbzerGqydC2nsYN/mp7RZu3q/w6/kvI2hwR/jeDeetM7xc3JFZH2NA==}
     peerDependencies:
-      '@xstate/fsm': ^2.0.0
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
-      xstate: ^4.36.0
+      xstate: ^5.11.0
     peerDependenciesMeta:
-      '@xstate/fsm':
-        optional: true
       xstate:
         optional: true
     dependencies:
       react: 18.2.0
       use-isomorphic-layout-effect: 1.1.2(@types/react@18.0.21)(react@18.2.0)
-      use-sync-external-store: 1.2.0(react@18.2.0)
-      xstate: 4.37.1
+      use-sync-external-store: 1.2.2(react@18.2.0)
+      xstate: 5.12.0
     transitivePeerDependencies:
       - '@types/react'
     dev: false
@@ -29979,6 +29976,17 @@ packages:
       ms: 2.1.3
       supports-color: 5.5.0
 
+  /debug@4.3.4:
+    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+    dependencies:
+      ms: 2.1.2
+
   /debug@4.3.4(supports-color@5.5.0):
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
     engines: {node: '>=6.0'}
@@ -30293,6 +30301,7 @@ packages:
   /detect-libc@2.0.3:
     resolution: {integrity: sha512-bwy0MGW55bG41VqxxypOsdSdGqLwXPI/focwgTYCFMbdUiBAxLg9CFzG08sz2aqzknwiX7Hkl0bQENjg8iLByw==}
     engines: {node: '>=8'}
+    requiresBuild: true
 
   /detect-newline@3.1.0:
     resolution: {integrity: sha512-TLz+x/vEXm/Y7P7wn1EJFNLxYpUD4TgMosxY6fAVJUnJMbupHBOncxyWUG9OpTaH9EBD7uFI5LfEgmMOc54DsA==}
@@ -46171,6 +46180,36 @@ packages:
       code-block-writer: 11.0.3
     dev: false
 
+  /ts-node@10.9.1(patch_hash=rke3py7up3u364r7wwqfla7cdm):
+    resolution: {integrity: sha512-NtVysVPkxxrwFGUUxGYhfux8k78pQB3JqYBXlLRZgdGUqTO5wU/UyHop5p70iEbGhB7q5KmiZiU0Y3KlJrScEw==}
+    hasBin: true
+    peerDependencies:
+      '@swc/core': '>=1.2.50'
+      '@swc/wasm': '>=1.2.50'
+      '@types/node': '*'
+      typescript: '>=2.7'
+    peerDependenciesMeta:
+      '@swc/core':
+        optional: true
+      '@swc/wasm':
+        optional: true
+    dependencies:
+      '@cspotcode/source-map-support': 0.8.1
+      '@tsconfig/node10': 1.0.9
+      '@tsconfig/node12': 1.0.11
+      '@tsconfig/node14': 1.0.3
+      '@tsconfig/node16': 1.0.3
+      acorn: 8.11.3
+      acorn-walk: 8.3.2
+      arg: 4.1.3
+      create-require: 1.1.1
+      diff: 4.0.2
+      make-error: 1.3.6
+      v8-compile-cache-lib: 3.0.1
+      yn: 3.1.1
+    dev: true
+    patched: true
+
   /ts-node@10.9.1(patch_hash=rke3py7up3u364r7wwqfla7cdm)(@swc/core@1.4.0)(@types/node@18.11.9)(typescript@5.2.2):
     resolution: {integrity: sha512-NtVysVPkxxrwFGUUxGYhfux8k78pQB3JqYBXlLRZgdGUqTO5wU/UyHop5p70iEbGhB7q5KmiZiU0Y3KlJrScEw==}
     hasBin: true
@@ -47168,6 +47207,14 @@ packages:
     dependencies:
       react: 18.2.0
 
+  /use-sync-external-store@1.2.2(react@18.2.0):
+    resolution: {integrity: sha512-PElTlVMwpblvbNqQ82d2n6RjStvdSoNe9FG28kNfz3WiXilJm4DdNkEzRhCZuIDwY8U08WVihhGR5iRqAwfDiw==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+    dependencies:
+      react: 18.2.0
+    dev: false
+
   /use@3.1.1:
     resolution: {integrity: sha512-cwESVXlO3url9YWlFW/TA9cshCEhtu7IKJ/p5soJ/gGpj7vbvFrAY/eIioQ6Dw23KjZhYgiIo8HOs1nQ2vr/oQ==}
     engines: {node: '>=0.10.0'}
@@ -47569,6 +47616,40 @@ packages:
     optionalDependencies:
       fsevents: 2.3.3
     dev: true
+
+  /vite@5.2.9:
+    resolution: {integrity: sha512-uOQWfuZBlc6Y3W/DTuQ1Sr+oIXWvqljLvS881SVmAj00d5RdgShLcuXWxseWPd4HXwiYBFW/vXHfKFeqj9uQnw==}
+    engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^18.0.0 || >=20.0.0
+      less: '*'
+      lightningcss: ^1.21.0
+      sass: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.4.0
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+    dependencies:
+      esbuild: 0.20.2
+      postcss: 8.4.38
+      rollup: 4.14.1
+    optionalDependencies:
+      fsevents: 2.3.3
 
   /vite@5.2.9(@types/node@18.11.9):
     resolution: {integrity: sha512-uOQWfuZBlc6Y3W/DTuQ1Sr+oIXWvqljLvS881SVmAj00d5RdgShLcuXWxseWPd4HXwiYBFW/vXHfKFeqj9uQnw==}
@@ -49402,10 +49483,6 @@ packages:
 
   /xsalsa20@1.2.0:
     resolution: {integrity: sha512-FIr/DEeoHfj7ftfylnoFt3rAIRoWXpx2AoDfrT2qD2wtp7Dp+COajvs/Icb7uHqRW9m60f5iXZwdsJJO3kvb7w==}
-
-  /xstate@4.37.1:
-    resolution: {integrity: sha512-MuB7s01nV5vG2CzaBg2msXLGz7JuS+x/NBkQuZAwgEYCnWA8iQMiRz2VGxD3pcFjZAOih3fOgDD3kDaFInEx+g==}
-    dev: false
 
   /xstate@5.12.0:
     resolution: {integrity: sha512-4W/Hj553mwVnTLQ1itc3rni/cGtM5OkjyavTjaxCelc0ZZKE/ks6tYllc98KbekIoUrEPm4CJH/wTB5p5pPGEw==}
