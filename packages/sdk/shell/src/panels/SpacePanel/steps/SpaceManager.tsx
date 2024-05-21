@@ -28,6 +28,7 @@ export type SpaceManagerImplProps = SpacePanelStepProps & {
   invitations?: CancellableInvitationObservable[];
   showInactiveInvitations?: boolean;
   inviteActions?: Record<string, ActionMenuItem>;
+  defaultInviteAction?: string;
   SpaceMemberList?: React.FC<SpaceMemberListProps>;
   InvitationList?: React.FC<InvitationListProps>;
 };
@@ -97,6 +98,7 @@ export const SpaceManagerImpl = (props: SpaceManagerImplProps) => {
     createInvitationUrl,
     send,
     inviteActions: propsInviteActions,
+    defaultInviteAction = 'inviteOne',
     invitations,
     showInactiveInvitations,
     SpaceMemberList: SpaceMemberListComponent = SpaceMemberList,
@@ -104,18 +106,18 @@ export const SpaceManagerImpl = (props: SpaceManagerImplProps) => {
   } = props;
   const { t } = useTranslation('os');
 
-  const inviteActions =
-    propsInviteActions ??
-    ({
-      noopInvite: {
-        label: t('create space invitation label'),
-        description: '',
-        icon: Placeholder,
-        onClick: () => {},
-      },
-    } as Record<string, ActionMenuItem>);
+  const inviteActions: Record<string, ActionMenuItem> = propsInviteActions ?? {
+    noopInvite: {
+      label: t('create space invitation label'),
+      description: '',
+      icon: Placeholder,
+      onClick: () => {},
+    },
+  };
 
-  const [activeAction, setInternalActiveAction] = useState(localStorage.getItem(activeActionKey) ?? 'inviteOne');
+  const [activeAction, setInternalActiveAction] = useState(
+    localStorage.getItem(activeActionKey) ?? defaultInviteAction,
+  );
 
   const setActiveAction = (nextAction: string) => {
     setInternalActiveAction(nextAction);

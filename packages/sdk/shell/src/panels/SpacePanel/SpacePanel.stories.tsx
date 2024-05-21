@@ -6,6 +6,8 @@ import '@dxosTheme';
 
 import React from 'react';
 
+import { UserPlus } from '@phosphor-icons/react';
+
 import { PublicKey } from '@dxos/keys';
 import { HaloSpaceMember, SpaceMember } from '@dxos/react-client/echo';
 import { Invitation } from '@dxos/react-client/invitations';
@@ -18,6 +20,7 @@ import { InvitationListItemImpl, SpaceMemberListImpl, InvitationList } from '../
 import { StorybookDialog } from '../../components/StorybookDialog';
 import { InvitationManager, type InvitationManagerProps } from '../../steps';
 import { inviteWithState } from '../../testing';
+import { osTranslations } from '../../translations';
 
 const noOpProps: SpacePanelImplProps = {
   titleId: 'storybookSpacePanel__title',
@@ -31,7 +34,7 @@ export default {
   title: 'react-shell/SpacePanel',
   component: SpacePanelImpl,
   decorators: [withTheme],
-  parameters: { chromatic: { disableSnapshot: false } },
+  parameters: { chromatic: { disableSnapshot: false }, translations: [osTranslations] },
 };
 
 export const SpaceManager = () => {
@@ -239,6 +242,13 @@ export const SpaceManagerWithMoreMembers = () => {
           return (
             <SpaceManagerImpl
               {...props}
+              inviteActions={{
+                inviteOne: {
+                  label: 'Single-use invitation',
+                  description: 'Invite a new member to the space',
+                  icon: UserPlus,
+                },
+              }}
               invitations={[
                 inviteWithState(Invitation.State.SUCCESS),
                 inviteWithState(Invitation.State.READY_FOR_AUTHENTICATION),
@@ -310,7 +320,7 @@ const SpaceInvitationManagerState = (extraprops?: Partial<InvitationManagerProps
   );
 };
 
-export const SpaceInvitationManagerInit = () => SpaceInvitationManagerState({ status: Invitation.State.INIT, id: '0' });
+export const SpaceInvitationManagerInit = () => SpaceInvitationManagerState({ status: Invitation.State.INIT, id: '1' });
 
 export const SpaceInvitationManagerConnecting = () =>
   SpaceInvitationManagerState({ status: Invitation.State.CONNECTING, id: '1' });
