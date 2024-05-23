@@ -93,6 +93,7 @@ export const useInvitationStatus = (initialObservable?: CancellableInvitationObs
           action.status === Invitation.State.TIMEOUT) && {
           haltedAt: typeof prev.haltedAt === 'undefined' ? action.haltedAt : prev.haltedAt,
         }),
+        invitationCode: initialObservable ? InvitationEncoder.encode(initialObservable?.get()) : undefined,
         observable:
           action.status === Invitation.State.CONNECTING ? action.observable ?? prev.observable : prev.observable,
       } as InvitationReducerState;
@@ -112,6 +113,7 @@ export const useInvitationStatus = (initialObservable?: CancellableInvitationObs
   useEffect(() => {
     const update = (invitation: Invitation) => {
       switch (invitation.state) {
+        case Invitation.State.INIT:
         case Invitation.State.CONNECTED:
         case Invitation.State.READY_FOR_AUTHENTICATION:
         case Invitation.State.AUTHENTICATING: {
@@ -182,7 +184,7 @@ export const useInvitationStatus = (initialObservable?: CancellableInvitationObs
       authenticate,
       id: invitation?.invitationId,
       multiUse: invitation?.multiUse,
-      invitationCode: invitation ? InvitationEncoder.encode(invitation) : undefined,
+      invitationCode: state.invitationCode,
       authCode: invitation?.authCode,
       authMethod: invitation?.authMethod,
       type: invitation?.type,
