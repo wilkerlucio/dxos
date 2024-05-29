@@ -18,7 +18,6 @@ const authHandler = authMiddleware({
 const handler: ExportedHandler<Env & { DX_AUTH: any }> = {
   fetch: async (request, env, context) => {
     const hostname = new URL(request.url).hostname;
-    console.log({ hostname });
     // Disable auth for *.dxos.org legacy deployments.
     const auth = hostname.endsWith('dxos.org') ? false : Boolean(env.DX_AUTH);
     return auth ? authHandler(request, env, context) : env.ASSETS.fetch(request);

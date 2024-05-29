@@ -14,7 +14,7 @@ import { RequestProcessor } from './processor';
 import { TestProcessorBuilder } from './testing';
 import { type ChainResources } from '../../chain';
 import { StubModelInvoker } from '../../tests/stub-invoker';
-import { registerTypes, str } from '../../util';
+import { str } from '../../util';
 
 describe.only('RequestProcessor', () => {
   // TODO(burdon): Create test prompt.
@@ -23,7 +23,7 @@ describe.only('RequestProcessor', () => {
     afterTest(() => testBuilder.destroy());
     const client = (await createInitializedClients(testBuilder))[0];
     const space = await client.spaces.create();
-    registerTypes(space);
+    client.addSchema(ChainPromptType, ChainType, ThreadType, MessageType, TextV0Type);
 
     // Add prompts.
     const command = 'translate';

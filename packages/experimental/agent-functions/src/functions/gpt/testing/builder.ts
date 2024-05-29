@@ -2,6 +2,8 @@
 // Copyright 2023 DXOS.org
 //
 
+import { ChainPromptType, MailboxType, MessageType, TextV0Type, ThreadType } from '@braneframe/types';
+import { GameType } from '@dxos/chess-app';
 import { Client } from '@dxos/client';
 import { type Space } from '@dxos/client/echo';
 import { TestBuilder } from '@dxos/client/testing';
@@ -10,7 +12,7 @@ import { createSpaceObjectGenerator } from '@dxos/echo-generator';
 import { invariant } from '@dxos/invariant';
 
 import { type ChainResources, type ChainVariant, createChainResources } from '../../../chain';
-import { getConfig, getKey, registerTypes } from '../../../util';
+import { getConfig, getKey } from '../../../util';
 
 export class TestProcessorBuilder {
   private readonly _ctx = new Context();
@@ -28,9 +30,9 @@ export class TestProcessorBuilder {
     await this._client.halo.createIdentity();
 
     this._space = await this._client.spaces.create();
-    registerTypes(this._space);
+    this._client.addSchema(GameType, TextV0Type, MailboxType, MessageType, ThreadType, ChainPromptType);
 
-    this._resources = createChainResources((process.env.DX_AI_MODEL as ChainVariant) ?? 'openai', {
+    this._resources = createChainResources((process.env.DX_AI_MODEL as ChainVariant) ?? 'ollama', {
       baseDir: '/tmp/dxos/testing/agent/functions/embedding',
       apiKey: getKey(this._client.config, 'openai.com/api_key'),
     });

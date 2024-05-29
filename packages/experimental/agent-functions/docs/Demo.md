@@ -5,6 +5,11 @@
 - TODO(burdon): ENV for no-agent.
 - TODO(burdon): Remove need for functions plugin config.
 
+# Prep
+
+- Space with presentation (lookup hypergraph)
+- iPad with notes
+
 # Terminals
 
 ```bash
@@ -78,7 +83,8 @@ dx composer import ./testing/data/functions.json
 
 ## Email
 
-https://hub.dxos.network/admin/email
+- https://hub.dxos.network/admin/email
+- https://hub.dxos.network/api/mailbox/hello@dxos.network
 
 ```bash
 cd ~/Code/dxos/w3/packages/hub

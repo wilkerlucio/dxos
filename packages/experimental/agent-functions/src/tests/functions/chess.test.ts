@@ -15,7 +15,6 @@ import { type FunctionManifest } from '@dxos/functions';
 import { startFunctionsHost } from '@dxos/functions/testing';
 import { afterTest, test } from '@dxos/test';
 
-import { registerTypes } from '../../util';
 import { initFunctionsPlugin } from '../setup';
 
 describe.only('Chess', () => {
@@ -51,7 +50,7 @@ describe.only('Chess', () => {
     };
 
     const space = await functions.client.spaces.create();
-    registerTypes(space);
+    functions.client.addSchema(GameType);
     const game = space.db.add(create(GameType, {}));
     await space.db.flush();
 

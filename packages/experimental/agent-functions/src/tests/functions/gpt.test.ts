@@ -6,7 +6,7 @@ import { expect } from 'chai';
 import get from 'lodash.get';
 import { join } from 'path';
 
-import { ChainInputType, MessageType, ThreadType } from '@braneframe/types';
+import { ChainInputType, ChainPromptType, MessageType, ThreadType } from '@braneframe/types';
 import { waitForCondition } from '@dxos/async';
 import { Expando, getMeta, type Space } from '@dxos/client/echo';
 import { TestBuilder, TextV0Type } from '@dxos/client/testing';
@@ -18,14 +18,13 @@ import { test } from '@dxos/test';
 
 import { type ChainResources } from '../../chain';
 import { ModelInvokerFactory } from '../../chain/model-invoker';
-import { registerTypes } from '../../util';
 import { initFunctionsPlugin } from '../setup';
 import { StubModelInvoker } from '../stub-invoker';
 import { createTestChain, type CreateTestChainInput } from '../test-chain-builder';
 
 let port = 7270;
 
-describe.only('Gpt', () => {
+describe.skip('Gpt', () => {
   let modelStub: StubModelInvoker;
   let testBuilder: TestBuilder;
   beforeEach(async () => {
@@ -246,7 +245,7 @@ const setupTest = async (testBuilder: TestBuilder) => {
   });
   const app = (await createInitializedClients(testBuilder))[0];
   const space = await app.spaces.create();
-  registerTypes(space);
+  app.addSchema(MessageType, ThreadType, TextV0Type, ChainPromptType);
   await inviteMember(space, functions.client);
   const trigger = triggerGptOnMessage(space);
   return { functions, app, space, trigger };

@@ -69,8 +69,6 @@ test.describe('Basic tests', () => {
   });
 
   test('reset device', async ({ browserName }) => {
-    test.setTimeout(60_000);
-
     await host.createSpace();
     await waitForExpect(async () => {
       expect(await host.getSpaceItemsCount()).to.equal(2);
