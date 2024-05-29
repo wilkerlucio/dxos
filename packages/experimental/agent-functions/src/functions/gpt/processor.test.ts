@@ -5,42 +5,42 @@
 import { expect } from 'chai';
 
 import { ChainInputType, ChainPromptType, ChainType, MessageType, TextV0Type, ThreadType } from '@braneframe/types';
+import { TestBuilder } from '@dxos/client/testing';
 import { create } from '@dxos/echo-schema';
+import { createInitializedClients } from '@dxos/functions/testing';
 import { afterTest, describe, test } from '@dxos/test';
 
 import { RequestProcessor } from './processor';
 import { TestProcessorBuilder } from './testing';
-import { str } from '../../util';
+import { type ChainResources } from '../../chain';
+import { StubModelInvoker } from '../../tests/stub-invoker';
+import { registerTypes, str } from '../../util';
 
-describe('RequestProcessor', () => {
+describe.only('RequestProcessor', () => {
   // TODO(burdon): Create test prompt.
   test('translate', async () => {
-    const builder = new TestProcessorBuilder();
-    await builder.init();
-    afterTest(async () => {
-      await builder.destroy(); // TODO(burdon): Hangs.
-    });
-
-    const { space, resources } = builder;
+    const testBuilder = new TestBuilder();
+    afterTest(() => testBuilder.destroy());
+    const client = (await createInitializedClients(testBuilder))[0];
+    const space = await client.spaces.create();
+    registerTypes(space);
 
     // Add prompts.
+    const command = 'translate';
+    const template = str('Translate the following into {language}:', '---', '{input}');
+    const language = 'japanese';
     {
       space.db.add(
         create(ChainType, {
           prompts: [
             create(ChainPromptType, {
-              command: 'translate',
-              template: str(
-                //
-                'Translate the following into {language}:',
-                '---',
-                '{input}',
-              ),
+              command,
+              template,
               inputs: [
                 {
                   type: ChainInputType.VALUE,
                   name: 'language',
-                  value: 'japanese',
+                  value: language,
                 },
                 {
                   type: ChainInputType.PASS_THROUGH,
@@ -53,21 +53,27 @@ describe('RequestProcessor', () => {
       );
     }
 
+    const input = 'hello world';
     {
-      const thread = new ThreadType();
+      const thread = create(ThreadType, { messages: [] });
       const message = create(MessageType, {
         from: {},
         blocks: [
           {
             timestamp: new Date().toISOString(),
-            content: create(TextV0Type, { content: '/translate hello world!' }),
+            content: create(TextV0Type, { content: `/${command} ${input}` }),
           },
         ],
       });
 
-      const processor = new RequestProcessor(resources);
-      const blocks = await processor.processThread({ space, thread, message });
-      expect(blocks).to.have.length(1);
+      const testInvoker = new StubModelInvoker();
+      const processor = new RequestProcessor(testInvoker, null as any as ChainResources);
+      await processor.processThread({ space, thread, message });
+      expect(testInvoker.lastCallArguments).to.deep.contain({
+        sequenceInput: input,
+        template,
+        templateSubstitutions: { language, input },
+      });
     }
   });
 
@@ -141,7 +147,7 @@ describe('RequestProcessor', () => {
         ],
       });
 
-      const processor = new RequestProcessor(resources);
+      const processor = new RequestProcessor(new StubModelInvoker(), resources);
       const blocks = await processor.processThread({ space, thread, message });
       expect(blocks).to.have.length(5);
     }
