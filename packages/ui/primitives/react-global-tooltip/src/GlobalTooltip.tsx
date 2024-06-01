@@ -2,7 +2,6 @@
 // Copyright 2024 DXOS.org
 //
 
-import { composeEventHandlers } from '@radix-ui/primitive';
 import { useComposedRefs } from '@radix-ui/react-compose-refs';
 import { createContextScope } from '@radix-ui/react-context';
 import type { Scope } from '@radix-ui/react-context';
@@ -12,8 +11,7 @@ import * as PopperPrimitive from '@radix-ui/react-popper';
 import { createPopperScope } from '@radix-ui/react-popper';
 import { Portal as PortalPrimitive } from '@radix-ui/react-portal';
 import { Presence } from '@radix-ui/react-presence';
-import { Primitive } from '@radix-ui/react-primitive';
-import type * as Radix from '@radix-ui/react-primitive';
+import { type Primitive } from '@radix-ui/react-primitive';
 import { Slottable } from '@radix-ui/react-slot';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import * as VisuallyHiddenPrimitive from '@radix-ui/react-visually-hidden';
@@ -42,6 +40,8 @@ const usePopperScope = createPopperScope();
 const DEFAULT_DELAY_DURATION = 700;
 const GLOBAL_TOOLTIP_OPEN = 'globaltooltip.open';
 const GLOBAL_TOOLTIP_NAME = 'GlobalTooltip';
+
+type TooltipTriggerElement = ElementRef<typeof Primitive.button>;
 
 type GlobalTooltipContextValue = {
   contentId: string;
@@ -178,6 +178,30 @@ const GlobalTooltipRoot: FC<GobalTooltipRootProps> = (props: ScopedProps<GobalTo
     return () => window.clearTimeout(openTimerRef.current);
   }, []);
 
+  const hasPointerMoveOpenedRef = useRef(false);
+  const isPointerDownRef = useRef(false);
+
+  const onTriggerEnter = useCallback(() => {
+    if (isOpenDelayed) {
+      handleDelayedOpen();
+    } else {
+      handleOpen();
+    }
+  }, [isOpenDelayed, handleDelayedOpen, handleOpen]);
+
+  const onTriggerLeave = useCallback(() => {
+    if (disableHoverableContent) {
+      handleClose();
+    } else {
+      // Clear the timer in case the pointer leaves the trigger before the tooltip is opened.
+      window.clearTimeout(openTimerRef.current);
+    }
+  }, [handleClose, disableHoverableContent]);
+
+  const handlePointerUp = useCallback(() => (isPointerDownRef.current = false), []);
+
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+
   return (
     <PopperPrimitive.Root {...popperScope}>
       <GlobalTooltipContextProvider
@@ -187,21 +211,6 @@ const GlobalTooltipRoot: FC<GobalTooltipRootProps> = (props: ScopedProps<GobalTo
         stateAttribute={stateAttribute}
         trigger={trigger}
         onTriggerChange={setTrigger}
-        onTriggerEnter={useCallback(() => {
-          if (isOpenDelayed) {
-            handleDelayedOpen();
-          } else {
-            handleOpen();
-          }
-        }, [isOpenDelayed, handleDelayedOpen, handleOpen])}
-        onTriggerLeave={useCallback(() => {
-          if (disableHoverableContent) {
-            handleClose();
-          } else {
-            // Clear the timer in case the pointer leaves the trigger before the tooltip is opened.
-            window.clearTimeout(openTimerRef.current);
-          }
-        }, [handleClose, disableHoverableContent])}
         onOpen={handleOpen}
         onClose={handleClose}
         disableHoverableContent={disableHoverableContent}
@@ -209,81 +218,44 @@ const GlobalTooltipRoot: FC<GobalTooltipRootProps> = (props: ScopedProps<GobalTo
         onPointerInTransitChange={onPointerInTransitChange}
         isOpenDelayed={isOpenDelayed}
         delayDuration={delayDuration}
+        onTriggerEnter={onTriggerEnter}
+        onTriggerLeave={onTriggerLeave}
       >
-        {children}
+        <div
+          onPointerMove={(event) => {
+            if (event.pointerType === 'touch') {
+              return;
+            }
+            if (!hasPointerMoveOpenedRef.current && !isPointerInTransitRef.current) {
+              onTriggerEnter();
+              hasPointerMoveOpenedRef.current = true;
+            }
+          }}
+          onPointerLeave={() => {
+            onTriggerLeave();
+            hasPointerMoveOpenedRef.current = false;
+          }}
+          onPointerDown={() => {
+            isPointerDownRef.current = true;
+            document.addEventListener('pointerup', handlePointerUp, { once: true });
+          }}
+          onFocus={() => {
+            if (!isPointerDownRef.current) {
+              onOpen();
+            }
+          }}
+          onBlur={onClose}
+          onClick={onClose}
+        >
+          {children}
+          <PopperPrimitive.Anchor asChild {...popperScope} ref={anchorRef} />
+        </div>
       </GlobalTooltipContextProvider>
     </PopperPrimitive.Root>
   );
 };
 
 GlobalTooltipRoot.displayName = GLOBAL_TOOLTIP_NAME;
-
-/* -------------------------------------------------------------------------------------------------
- * TooltipTrigger
- * ----------------------------------------------------------------------------------------------- */
-
-const TRIGGER_NAME = 'TooltipTrigger';
-
-type TooltipTriggerElement = ElementRef<typeof Primitive.button>;
-type PrimitiveButtonProps = Radix.ComponentPropsWithoutRef<typeof Primitive.button>;
-interface TooltipTriggerProps extends PrimitiveButtonProps {}
-
-const TooltipTrigger = forwardRef<TooltipTriggerElement, TooltipTriggerProps>(
-  (props: ScopedProps<TooltipTriggerProps>, forwardedRef) => {
-    const { __scopeGlobalTooltip, ...triggerProps } = props;
-    const context = useGlobalTooltipContext(TRIGGER_NAME, __scopeGlobalTooltip);
-    const providerContext = useGlobalTooltipContext(TRIGGER_NAME, __scopeGlobalTooltip);
-    const popperScope = usePopperScope(__scopeGlobalTooltip);
-    const ref = useRef<TooltipTriggerElement>(null);
-    const composedRefs = useComposedRefs(forwardedRef, ref, context.onTriggerChange);
-    const isPointerDownRef = useRef(false);
-    const hasPointerMoveOpenedRef = useRef(false);
-    const handlePointerUp = useCallback(() => (isPointerDownRef.current = false), []);
-
-    useEffect(() => {
-      return () => document.removeEventListener('pointerup', handlePointerUp);
-    }, [handlePointerUp]);
-
-    return (
-      <PopperPrimitive.Anchor asChild {...popperScope}>
-        <Primitive.button
-          // We purposefully avoid adding `type=button` here because tooltip triggers are also
-          // commonly anchors and the anchor `type` attribute signifies MIME type.
-          aria-describedby={context.open ? context.contentId : undefined}
-          data-state={context.stateAttribute}
-          {...triggerProps}
-          ref={composedRefs}
-          onPointerMove={composeEventHandlers(props.onPointerMove, (event) => {
-            if (event.pointerType === 'touch') {
-              return;
-            }
-            if (!hasPointerMoveOpenedRef.current && !providerContext.isPointerInTransitRef.current) {
-              context.onTriggerEnter();
-              hasPointerMoveOpenedRef.current = true;
-            }
-          })}
-          onPointerLeave={composeEventHandlers(props.onPointerLeave, () => {
-            context.onTriggerLeave();
-            hasPointerMoveOpenedRef.current = false;
-          })}
-          onPointerDown={composeEventHandlers(props.onPointerDown, () => {
-            isPointerDownRef.current = true;
-            document.addEventListener('pointerup', handlePointerUp, { once: true });
-          })}
-          onFocus={composeEventHandlers(props.onFocus, () => {
-            if (!isPointerDownRef.current) {
-              context.onOpen();
-            }
-          })}
-          onBlur={composeEventHandlers(props.onBlur, context.onClose)}
-          onClick={composeEventHandlers(props.onClick, context.onClose)}
-        />
-      </PopperPrimitive.Anchor>
-    );
-  },
-);
-
-TooltipTrigger.displayName = TRIGGER_NAME;
 
 /* -------------------------------------------------------------------------------------------------
  * TooltipPortal
@@ -447,8 +419,8 @@ const [VisuallyHiddenContentContextProvider, useVisuallyHiddenContentContext] = 
 );
 
 type TooltipContentImplElement = ElementRef<typeof PopperPrimitive.Content>;
-type DismissableLayerProps = Radix.ComponentPropsWithoutRef<typeof DismissableLayer>;
-type PopperContentProps = Radix.ComponentPropsWithoutRef<typeof PopperPrimitive.Content>;
+type DismissableLayerProps = ComponentPropsWithoutRef<typeof DismissableLayer>;
+type PopperContentProps = ComponentPropsWithoutRef<typeof PopperPrimitive.Content>;
 interface TooltipContentImplProps extends Omit<PopperContentProps, 'onPlaced'> {
   /**
    * A more descriptive label for accessibility purpose
@@ -548,7 +520,7 @@ TooltipContent.displayName = CONTENT_NAME;
 const ARROW_NAME = 'TooltipArrow';
 
 type TooltipArrowElement = ElementRef<typeof PopperPrimitive.Arrow>;
-type PopperArrowProps = Radix.ComponentPropsWithoutRef<typeof PopperPrimitive.Arrow>;
+type PopperArrowProps = ComponentPropsWithoutRef<typeof PopperPrimitive.Arrow>;
 interface TooltipArrowProps extends PopperArrowProps {}
 
 const TooltipArrow = forwardRef<TooltipArrowElement, TooltipArrowProps>(
@@ -723,7 +695,6 @@ const getHullPresorted = <P extends Point>(points: Readonly<Array<P>>): Array<P>
 };
 
 const Root = GlobalTooltipRoot;
-const Trigger = TooltipTrigger;
 const Portal = TooltipPortal;
 const Content = TooltipContent;
 const Arrow = TooltipArrow;
@@ -733,15 +704,13 @@ export {
   useGlobalTooltipContext,
   //
   GlobalTooltipRoot,
-  TooltipTrigger,
   TooltipPortal,
   TooltipContent,
   TooltipArrow,
   //
   Root,
-  Trigger,
   Portal,
   Content,
   Arrow,
 };
-export type { GobalTooltipRootProps, TooltipTriggerProps, TooltipPortalProps, TooltipContentProps, TooltipArrowProps };
+export type { GobalTooltipRootProps, TooltipPortalProps, TooltipContentProps, TooltipArrowProps };
