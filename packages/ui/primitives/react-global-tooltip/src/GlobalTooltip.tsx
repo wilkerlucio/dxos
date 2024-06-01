@@ -17,7 +17,19 @@ import type * as Radix from '@radix-ui/react-primitive';
 import { Slottable } from '@radix-ui/react-slot';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import * as VisuallyHiddenPrimitive from '@radix-ui/react-visually-hidden';
-import * as React from 'react';
+import React, {
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+  type FC,
+  forwardRef,
+  type MutableRefObject,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 type ScopedProps<P = {}> = P & { __scopeGlobalTooltip?: Scope };
 const [createTooltipContext, createTooltipScope] = createContextScope('GlobalTooltip', [createPopperScope]);
@@ -31,7 +43,7 @@ const DEFAULT_DELAY_DURATION = 700;
 const GLOBAL_TOOLTIP_OPEN = 'globaltooltip.open';
 const GLOBAL_TOOLTIP_NAME = 'GlobalTooltip';
 
-type TooltipContextValue = {
+type GlobalTooltipContextValue = {
   contentId: string;
   open: boolean;
   stateAttribute: 'closed' | 'delayed-open' | 'instant-open';
@@ -47,13 +59,14 @@ type TooltipContextValue = {
   onOpen(): void;
   onClose(): void;
   onPointerInTransitChange(inTransit: boolean): void;
-  isPointerInTransitRef: React.MutableRefObject<boolean>;
+  isPointerInTransitRef: MutableRefObject<boolean>;
 };
 
-const [TooltipContextProvider, useTooltipContext] = createTooltipContext<TooltipContextValue>(GLOBAL_TOOLTIP_NAME);
+const [GlobalTooltipContextProvider, useGlobalTooltipContext] =
+  createTooltipContext<GlobalTooltipContextValue>(GLOBAL_TOOLTIP_NAME);
 
-interface TooltipProps {
-  children?: React.ReactNode;
+interface GobalTooltipRootProps {
+  children?: ReactNode;
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -74,7 +87,7 @@ interface TooltipProps {
   skipDelayDuration?: number;
 }
 
-const GlobalTooltipRoot: React.FC<TooltipProps> = (props: ScopedProps<TooltipProps>) => {
+const GlobalTooltipRoot: FC<GobalTooltipRootProps> = (props: ScopedProps<GobalTooltipRootProps>) => {
   const {
     __scopeGlobalTooltip,
     delayDuration = DEFAULT_DELAY_DURATION,
@@ -85,33 +98,42 @@ const GlobalTooltipRoot: React.FC<TooltipProps> = (props: ScopedProps<TooltipPro
     onOpenChange,
     children,
   } = props;
-  const [isOpenDelayed, setIsOpenDelayed] = React.useState(true);
-  const isPointerInTransitRef = React.useRef(false);
-  const skipDelayTimerRef = React.useRef(0);
 
-  const onOpen = React.useCallback(() => {
+  const [isOpenDelayed, setIsOpenDelayed] = useState(true);
+
+  const isPointerInTransitRef = useRef(false);
+
+  const skipDelayTimerRef = useRef(0);
+
+  const onOpen = useCallback(() => {
     window.clearTimeout(skipDelayTimerRef.current);
     setIsOpenDelayed(false);
   }, []);
 
-  const onClose = React.useCallback(() => {
+  const onClose = useCallback(() => {
     window.clearTimeout(skipDelayTimerRef.current);
     skipDelayTimerRef.current = window.setTimeout(() => setIsOpenDelayed(true), skipDelayDuration);
   }, [skipDelayDuration]);
 
-  const onPointerInTransitChange = React.useCallback((inTransit: boolean) => {
+  const onPointerInTransitChange = useCallback((inTransit: boolean) => {
     isPointerInTransitRef.current = inTransit;
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const skipDelayTimer = skipDelayTimerRef.current;
     return () => window.clearTimeout(skipDelayTimer);
   }, []);
+
   const popperScope = usePopperScope(__scopeGlobalTooltip);
-  const [trigger, setTrigger] = React.useState<HTMLButtonElement | null>(null);
+
+  const [trigger, setTrigger] = useState<HTMLButtonElement | null>(null);
+
   const contentId = useId();
-  const openTimerRef = React.useRef(0);
-  const wasOpenDelayedRef = React.useRef(false);
+
+  const openTimerRef = useRef(0);
+
+  const wasOpenDelayedRef = useRef(false);
+
   const [open = false, setOpen] = useControllableState({
     prop: openProp,
     defaultProp: defaultOpen,
@@ -128,22 +150,23 @@ const GlobalTooltipRoot: React.FC<TooltipProps> = (props: ScopedProps<TooltipPro
       onOpenChange?.(open);
     },
   });
-  const stateAttribute = React.useMemo(() => {
+
+  const stateAttribute = useMemo(() => {
     return open ? (wasOpenDelayedRef.current ? 'delayed-open' : 'instant-open') : 'closed';
   }, [open]);
 
-  const handleOpen = React.useCallback(() => {
+  const handleOpen = useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     wasOpenDelayedRef.current = false;
     setOpen(true);
   }, [setOpen]);
 
-  const handleClose = React.useCallback(() => {
+  const handleClose = useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     setOpen(false);
   }, [setOpen]);
 
-  const handleDelayedOpen = React.useCallback(() => {
+  const handleDelayedOpen = useCallback(() => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = window.setTimeout(() => {
       wasOpenDelayedRef.current = true;
@@ -151,27 +174,27 @@ const GlobalTooltipRoot: React.FC<TooltipProps> = (props: ScopedProps<TooltipPro
     }, delayDuration);
   }, [delayDuration, setOpen]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     return () => window.clearTimeout(openTimerRef.current);
   }, []);
 
   return (
     <PopperPrimitive.Root {...popperScope}>
-      <TooltipContextProvider
+      <GlobalTooltipContextProvider
         scope={__scopeGlobalTooltip}
         contentId={contentId}
         open={open}
         stateAttribute={stateAttribute}
         trigger={trigger}
         onTriggerChange={setTrigger}
-        onTriggerEnter={React.useCallback(() => {
+        onTriggerEnter={useCallback(() => {
           if (isOpenDelayed) {
             handleDelayedOpen();
           } else {
             handleOpen();
           }
         }, [isOpenDelayed, handleDelayedOpen, handleOpen])}
-        onTriggerLeave={React.useCallback(() => {
+        onTriggerLeave={useCallback(() => {
           if (disableHoverableContent) {
             handleClose();
           } else {
@@ -188,7 +211,7 @@ const GlobalTooltipRoot: React.FC<TooltipProps> = (props: ScopedProps<TooltipPro
         delayDuration={delayDuration}
       >
         {children}
-      </TooltipContextProvider>
+      </GlobalTooltipContextProvider>
     </PopperPrimitive.Root>
   );
 };
@@ -201,23 +224,23 @@ GlobalTooltipRoot.displayName = GLOBAL_TOOLTIP_NAME;
 
 const TRIGGER_NAME = 'TooltipTrigger';
 
-type TooltipTriggerElement = React.ElementRef<typeof Primitive.button>;
+type TooltipTriggerElement = ElementRef<typeof Primitive.button>;
 type PrimitiveButtonProps = Radix.ComponentPropsWithoutRef<typeof Primitive.button>;
 interface TooltipTriggerProps extends PrimitiveButtonProps {}
 
-const TooltipTrigger = React.forwardRef<TooltipTriggerElement, TooltipTriggerProps>(
+const TooltipTrigger = forwardRef<TooltipTriggerElement, TooltipTriggerProps>(
   (props: ScopedProps<TooltipTriggerProps>, forwardedRef) => {
     const { __scopeGlobalTooltip, ...triggerProps } = props;
-    const context = useTooltipContext(TRIGGER_NAME, __scopeGlobalTooltip);
-    const providerContext = useTooltipContext(TRIGGER_NAME, __scopeGlobalTooltip);
+    const context = useGlobalTooltipContext(TRIGGER_NAME, __scopeGlobalTooltip);
+    const providerContext = useGlobalTooltipContext(TRIGGER_NAME, __scopeGlobalTooltip);
     const popperScope = usePopperScope(__scopeGlobalTooltip);
-    const ref = React.useRef<TooltipTriggerElement>(null);
+    const ref = useRef<TooltipTriggerElement>(null);
     const composedRefs = useComposedRefs(forwardedRef, ref, context.onTriggerChange);
-    const isPointerDownRef = React.useRef(false);
-    const hasPointerMoveOpenedRef = React.useRef(false);
-    const handlePointerUp = React.useCallback(() => (isPointerDownRef.current = false), []);
+    const isPointerDownRef = useRef(false);
+    const hasPointerMoveOpenedRef = useRef(false);
+    const handlePointerUp = useCallback(() => (isPointerDownRef.current = false), []);
 
-    React.useEffect(() => {
+    useEffect(() => {
       return () => document.removeEventListener('pointerup', handlePointerUp);
     }, [handlePointerUp]);
 
@@ -273,9 +296,9 @@ const [PortalProvider, usePortalContext] = createTooltipContext<PortalContextVal
   forceMount: undefined,
 });
 
-type PortalProps = React.ComponentPropsWithoutRef<typeof PortalPrimitive>;
+type PortalProps = ComponentPropsWithoutRef<typeof PortalPrimitive>;
 interface TooltipPortalProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   /**
    * Specify a container element to portal the content into.
    */
@@ -287,9 +310,9 @@ interface TooltipPortalProps {
   forceMount?: true;
 }
 
-const TooltipPortal: React.FC<TooltipPortalProps> = (props: ScopedProps<TooltipPortalProps>) => {
+const TooltipPortal: FC<TooltipPortalProps> = (props: ScopedProps<TooltipPortalProps>) => {
   const { __scopeGlobalTooltip, forceMount, children, container } = props;
-  const context = useTooltipContext(PORTAL_NAME, __scopeGlobalTooltip);
+  const context = useGlobalTooltipContext(PORTAL_NAME, __scopeGlobalTooltip);
   return (
     <PortalProvider scope={__scopeGlobalTooltip} forceMount={forceMount}>
       <Presence present={forceMount || context.open}>
@@ -318,11 +341,11 @@ interface TooltipContentProps extends TooltipContentImplProps {
   forceMount?: true;
 }
 
-const TooltipContent = React.forwardRef<TooltipContentElement, TooltipContentProps>(
+const TooltipContent = forwardRef<TooltipContentElement, TooltipContentProps>(
   (props: ScopedProps<TooltipContentProps>, forwardedRef) => {
     const portalContext = usePortalContext(CONTENT_NAME, props.__scopeGlobalTooltip);
     const { forceMount = portalContext.forceMount, side = 'top', ...contentProps } = props;
-    const context = useTooltipContext(CONTENT_NAME, props.__scopeGlobalTooltip);
+    const context = useGlobalTooltipContext(CONTENT_NAME, props.__scopeGlobalTooltip);
 
     return (
       <Presence present={forceMount || context.open}>
@@ -342,25 +365,25 @@ type Polygon = Point[];
 type TooltipContentHoverableElement = TooltipContentImplElement;
 interface TooltipContentHoverableProps extends TooltipContentImplProps {}
 
-const TooltipContentHoverable = React.forwardRef<TooltipContentHoverableElement, TooltipContentHoverableProps>(
+const TooltipContentHoverable = forwardRef<TooltipContentHoverableElement, TooltipContentHoverableProps>(
   (props: ScopedProps<TooltipContentHoverableProps>, forwardedRef) => {
-    const context = useTooltipContext(CONTENT_NAME, props.__scopeGlobalTooltip);
-    const providerContext = useTooltipContext(CONTENT_NAME, props.__scopeGlobalTooltip);
-    const ref = React.useRef<TooltipContentHoverableElement>(null);
+    const context = useGlobalTooltipContext(CONTENT_NAME, props.__scopeGlobalTooltip);
+    const providerContext = useGlobalTooltipContext(CONTENT_NAME, props.__scopeGlobalTooltip);
+    const ref = useRef<TooltipContentHoverableElement>(null);
     const composedRefs = useComposedRefs(forwardedRef, ref);
-    const [pointerGraceArea, setPointerGraceArea] = React.useState<Polygon | null>(null);
+    const [pointerGraceArea, setPointerGraceArea] = useState<Polygon | null>(null);
 
     const { trigger, onClose } = context;
     const content = ref.current;
 
     const { onPointerInTransitChange } = providerContext;
 
-    const handleRemoveGraceArea = React.useCallback(() => {
+    const handleRemoveGraceArea = useCallback(() => {
       setPointerGraceArea(null);
       onPointerInTransitChange(false);
     }, [onPointerInTransitChange]);
 
-    const handleCreateGraceArea = React.useCallback(
+    const handleCreateGraceArea = useCallback(
       (event: PointerEvent, hoverTarget: HTMLElement) => {
         const currentTarget = event.currentTarget as HTMLElement;
         const exitPoint = { x: event.clientX, y: event.clientY };
@@ -374,11 +397,11 @@ const TooltipContentHoverable = React.forwardRef<TooltipContentHoverableElement,
       [onPointerInTransitChange],
     );
 
-    React.useEffect(() => {
+    useEffect(() => {
       return () => handleRemoveGraceArea();
     }, [handleRemoveGraceArea]);
 
-    React.useEffect(() => {
+    useEffect(() => {
       if (trigger && content) {
         const handleTriggerLeave = (event: PointerEvent) => handleCreateGraceArea(event, content);
         const handleContentLeave = (event: PointerEvent) => handleCreateGraceArea(event, trigger);
@@ -392,7 +415,7 @@ const TooltipContentHoverable = React.forwardRef<TooltipContentHoverableElement,
       }
     }, [trigger, content, handleCreateGraceArea, handleRemoveGraceArea]);
 
-    React.useEffect(() => {
+    useEffect(() => {
       if (pointerGraceArea) {
         const handleTrackPointerGrace = (event: PointerEvent) => {
           const target = event.target as HTMLElement;
@@ -423,7 +446,7 @@ const [VisuallyHiddenContentContextProvider, useVisuallyHiddenContentContext] = 
   },
 );
 
-type TooltipContentImplElement = React.ElementRef<typeof PopperPrimitive.Content>;
+type TooltipContentImplElement = ElementRef<typeof PopperPrimitive.Content>;
 type DismissableLayerProps = Radix.ComponentPropsWithoutRef<typeof DismissableLayer>;
 type PopperContentProps = Radix.ComponentPropsWithoutRef<typeof PopperPrimitive.Content>;
 interface TooltipContentImplProps extends Omit<PopperContentProps, 'onPlaced'> {
@@ -444,7 +467,7 @@ interface TooltipContentImplProps extends Omit<PopperContentProps, 'onPlaced'> {
   onPointerDownOutside?: DismissableLayerProps['onPointerDownOutside'];
 }
 
-const TooltipContentImpl = React.forwardRef<TooltipContentImplElement, TooltipContentImplProps>(
+const TooltipContentImpl = forwardRef<TooltipContentImplElement, TooltipContentImplProps>(
   (props: ScopedProps<TooltipContentImplProps>, forwardedRef) => {
     const {
       __scopeGlobalTooltip,
@@ -454,18 +477,18 @@ const TooltipContentImpl = React.forwardRef<TooltipContentImplElement, TooltipCo
       onPointerDownOutside,
       ...contentProps
     } = props;
-    const context = useTooltipContext(CONTENT_NAME, __scopeGlobalTooltip);
+    const context = useGlobalTooltipContext(CONTENT_NAME, __scopeGlobalTooltip);
     const popperScope = usePopperScope(__scopeGlobalTooltip);
     const { onClose } = context;
 
     // Close this tooltip if another one opens
-    React.useEffect(() => {
+    useEffect(() => {
       document.addEventListener(GLOBAL_TOOLTIP_OPEN, onClose);
       return () => document.removeEventListener(GLOBAL_TOOLTIP_OPEN, onClose);
     }, [onClose]);
 
     // Close the tooltip if the trigger is scrolled
-    React.useEffect(() => {
+    useEffect(() => {
       if (context.trigger) {
         const handleScroll = (event: Event) => {
           const target = event.target as HTMLElement;
@@ -524,11 +547,11 @@ TooltipContent.displayName = CONTENT_NAME;
 
 const ARROW_NAME = 'TooltipArrow';
 
-type TooltipArrowElement = React.ElementRef<typeof PopperPrimitive.Arrow>;
+type TooltipArrowElement = ElementRef<typeof PopperPrimitive.Arrow>;
 type PopperArrowProps = Radix.ComponentPropsWithoutRef<typeof PopperPrimitive.Arrow>;
 interface TooltipArrowProps extends PopperArrowProps {}
 
-const TooltipArrow = React.forwardRef<TooltipArrowElement, TooltipArrowProps>(
+const TooltipArrow = forwardRef<TooltipArrowElement, TooltipArrowProps>(
   (props: ScopedProps<TooltipArrowProps>, forwardedRef) => {
     const { __scopeGlobalTooltip, ...arrowProps } = props;
     const popperScope = usePopperScope(__scopeGlobalTooltip);
@@ -707,7 +730,7 @@ const Arrow = TooltipArrow;
 
 export {
   createTooltipScope,
-  useTooltipContext,
+  useGlobalTooltipContext,
   //
   GlobalTooltipRoot,
   TooltipTrigger,
@@ -721,4 +744,4 @@ export {
   Content,
   Arrow,
 };
-export type { TooltipProps, TooltipTriggerProps, TooltipPortalProps, TooltipContentProps, TooltipArrowProps };
+export type { GobalTooltipRootProps, TooltipTriggerProps, TooltipPortalProps, TooltipContentProps, TooltipArrowProps };
