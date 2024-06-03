@@ -14,6 +14,7 @@
   ],
   "dependencies": {
     "@dxos/log": "workspace:*",
+    "@dxos/react-global-tooltip": "workspace:*",
     "@dxos/react-hooks": "workspace:*",
     "@dxos/react-input": "workspace:*",
     "@dxos/react-list": "workspace:*",

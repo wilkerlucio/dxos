@@ -30,6 +30,7 @@ import {
   Status,
   toLocalizedString,
   useTranslation,
+  GlobalTooltip,
 } from '@dxos/react-ui';
 import { Deck, deckGrid, PlankHeading, plankHeadingIconProps, useAttendable } from '@dxos/react-ui-deck';
 import { descriptionText, fixedInsetFlexLayout, getSize, mx } from '@dxos/react-ui-theme';
@@ -146,89 +147,91 @@ const NodePlankHeading = ({
   const { dispatch } = useIntent();
   const ActionRoot = node && popoverAnchorId === `dxos.org/ui/${DECK_PLUGIN}/${node.id}` ? Popover.Anchor : Fragment;
   return (
-    <PlankHeading.Root {...(part[0] !== 'main' && { classNames: 'pie-1' })}>
-      <ActionRoot>
-        {node ? (
-          <PlankHeading.ActionsMenu
-            triggerLabel={t('actions menu label')}
-            actions={node.actions()}
-            onAction={(action) =>
-              typeof action.data === 'function' && action.data?.({ node: action as Node, caller: DECK_PLUGIN })
-            }
-          >
-            <PlankHeading.Button attendableId={node.id}>
+    <GlobalTooltip.Anchor asChild>
+      <PlankHeading.Root {...(part[0] !== 'main' && { classNames: 'pie-1' })} data-tooltip='Hello world'>
+        <ActionRoot>
+          {node ? (
+            <PlankHeading.ActionsMenu
+              triggerLabel={t('actions menu label')}
+              actions={node.actions()}
+              onAction={(action) =>
+                typeof action.data === 'function' && action.data?.({ node: action as Node, caller: DECK_PLUGIN })
+              }
+            >
+              <PlankHeading.Button attendableId={node.id}>
+                <span className='sr-only'>{label}</span>
+                <Icon {...plankHeadingIconProps} />
+              </PlankHeading.Button>
+            </PlankHeading.ActionsMenu>
+          ) : (
+            <PlankHeading.Button>
               <span className='sr-only'>{label}</span>
               <Icon {...plankHeadingIconProps} />
             </PlankHeading.Button>
-          </PlankHeading.ActionsMenu>
-        ) : (
-          <PlankHeading.Button>
-            <span className='sr-only'>{label}</span>
-            <Icon {...plankHeadingIconProps} />
-          </PlankHeading.Button>
+          )}
+        </ActionRoot>
+        <PlankHeading.Label attendableId={node?.id} {...(pending && { classNames: 'fg-description' })}>
+          {label}
+        </PlankHeading.Label>
+        {node && part[0] !== 'complementary' && (
+          <Surface role='navbar-end' direction='inline-reverse' data={{ object: node.data, part }} />
         )}
-      </ActionRoot>
-      <PlankHeading.Label attendableId={node?.id} {...(pending && { classNames: 'fg-description' })}>
-        {label}
-      </PlankHeading.Label>
-      {node && part[0] !== 'complementary' && (
-        <Surface role='navbar-end' direction='inline-reverse' data={{ object: node.data, part }} />
-      )}
-      {/* NOTE(thure): Pinning & unpinning are temporarily disabled */}
-      <PlankHeading.Controls
-        part={part}
-        increment={part[0] === 'main'}
-        // pin={part[0] === 'sidebar' ? 'end' : part[0] === 'complementary' ? 'start' : 'both'}
-        onClick={({ type, part }) =>
-          dispatch(
-            type === 'close'
-              ? part[0] === 'complementary'
-                ? {
-                    action: LayoutAction.SET_LAYOUT,
-                    data: {
-                      element: 'complementary',
-                      state: false,
-                    },
-                  }
-                : {
-                    action: NavigationAction.CLOSE,
+        {/* NOTE(thure): Pinning & unpinning are temporarily disabled */}
+        <PlankHeading.Controls
+          part={part}
+          increment={part[0] === 'main'}
+          // pin={part[0] === 'sidebar' ? 'end' : part[0] === 'complementary' ? 'start' : 'both'}
+          onClick={({ type, part }) =>
+            dispatch(
+              type === 'close'
+                ? part[0] === 'complementary'
+                  ? {
+                      action: LayoutAction.SET_LAYOUT,
+                      data: {
+                        element: 'complementary',
+                        state: false,
+                      },
+                    }
+                  : {
+                      action: NavigationAction.CLOSE,
+                      data: {
+                        activeParts: {
+                          complementary: `${slug}${SLUG_PATH_SEPARATOR}comments${SLUG_COLLECTION_INDICATOR}`,
+                          [part[0]]: slug,
+                        },
+                      },
+                    }
+                : { action: NavigationAction.ADJUST, data: { type, part } },
+            )
+          }
+          close={part[0] === 'complementary' ? 'minify-end' : true}
+        >
+          {/* TODO(thure): This, and all other hardcoded `comments` references, needs to be refactored. */}
+          {node && !!node.data?.comments && !slug?.endsWith('comments') && (
+            <Button
+              variant='ghost'
+              classNames='p-1'
+              onClick={() =>
+                dispatch([
+                  {
+                    action: NavigationAction.OPEN,
                     data: {
                       activeParts: {
-                        complementary: `${slug}${SLUG_PATH_SEPARATOR}comments${SLUG_COLLECTION_INDICATOR}`,
-                        [part[0]]: slug,
+                        complementary: `${node.id}${SLUG_PATH_SEPARATOR}comments${SLUG_COLLECTION_INDICATOR}`,
                       },
                     },
-                  }
-              : { action: NavigationAction.ADJUST, data: { type, part } },
-          )
-        }
-        close={part[0] === 'complementary' ? 'minify-end' : true}
-      >
-        {/* TODO(thure): This, and all other hardcoded `comments` references, needs to be refactored. */}
-        {node && !!node.data?.comments && !slug?.endsWith('comments') && (
-          <Button
-            variant='ghost'
-            classNames='p-1'
-            onClick={() =>
-              dispatch([
-                {
-                  action: NavigationAction.OPEN,
-                  data: {
-                    activeParts: {
-                      complementary: `${node.id}${SLUG_PATH_SEPARATOR}comments${SLUG_COLLECTION_INDICATOR}`,
-                    },
                   },
-                },
-                { action: LayoutAction.SET_LAYOUT, data: { element: 'complementary', state: true } },
-              ])
-            }
-          >
-            <span className='sr-only'>{t('open comments label')}</span>
-            <Chat />
-          </Button>
-        )}
-      </PlankHeading.Controls>
-    </PlankHeading.Root>
+                  { action: LayoutAction.SET_LAYOUT, data: { element: 'complementary', state: true } },
+                ])
+              }
+            >
+              <span className='sr-only'>{t('open comments label')}</span>
+              <Chat />
+            </Button>
+          )}
+        </PlankHeading.Controls>
+      </PlankHeading.Root>
+    </GlobalTooltip.Anchor>
   );
 };
 

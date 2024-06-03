@@ -30,6 +30,9 @@
       "path": "../../common/util"
     },
     {
+      "path": "../primitives/react-global-tooltip"
+    },
+    {
       "path": "../primitives/react-hooks"
     },
     {

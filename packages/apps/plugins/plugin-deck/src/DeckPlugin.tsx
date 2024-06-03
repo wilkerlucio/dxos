@@ -30,6 +30,7 @@ import {
 import { create } from '@dxos/echo-schema';
 import { Keyboard } from '@dxos/keyboard';
 import { LocalStorageStore } from '@dxos/local-storage';
+import { GlobalTooltip } from '@dxos/react-ui';
 import { AttentionProvider, translations as deckTranslations } from '@dxos/react-ui-deck';
 import { Mosaic } from '@dxos/react-ui-mosaic';
 
@@ -250,25 +251,27 @@ export const DeckPlugin = ({
       root: () => {
         return (
           <Mosaic.Root>
-            <DeckLayout
-              attention={attention}
-              location={location}
-              showHintsFooter={settings.values.showFooter}
-              slots={settings.values.customSlots ? customSlots : undefined}
-              toasts={layout.values.toasts}
-              onDismissToast={(id) => {
-                const index = layout.values.toasts.findIndex((toast) => toast.id === id);
-                if (index !== -1) {
-                  // Allow time for the toast to animate out.
-                  setTimeout(() => {
-                    if (layout.values.toasts[index].id === currentUndoId) {
-                      currentUndoId = undefined;
-                    }
-                    layout.values.toasts.splice(index, 1);
-                  }, 1000);
-                }
-              }}
-            />
+            <GlobalTooltip.Root>
+              <DeckLayout
+                attention={attention}
+                location={location}
+                showHintsFooter={settings.values.showFooter}
+                slots={settings.values.customSlots ? customSlots : undefined}
+                toasts={layout.values.toasts}
+                onDismissToast={(id) => {
+                  const index = layout.values.toasts.findIndex((toast) => toast.id === id);
+                  if (index !== -1) {
+                    // Allow time for the toast to animate out.
+                    setTimeout(() => {
+                      if (layout.values.toasts[index].id === currentUndoId) {
+                        currentUndoId = undefined;
+                      }
+                      layout.values.toasts.splice(index, 1);
+                    }, 1000);
+                  }
+                }}
+              />
+            </GlobalTooltip.Root>
             <Mosaic.DragOverlay />
           </Mosaic.Root>
         );
