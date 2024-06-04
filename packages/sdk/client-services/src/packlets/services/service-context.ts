@@ -6,7 +6,7 @@ import { Trigger } from '@dxos/async';
 import { Context, Resource } from '@dxos/context';
 import { getCredentialAssertion, type CredentialProcessor } from '@dxos/credentials';
 import { failUndefined } from '@dxos/debug';
-import { EchoHost } from '@dxos/echo-db';
+import { EchoEdgeReplicator, EchoHost } from '@dxos/echo-db';
 import { MetadataStore, SnapshotStore, SpaceManager, valueEncoding } from '@dxos/echo-pipeline';
 import { FeedFactory, FeedStore } from '@dxos/feed-store';
 import { invariant } from '@dxos/invariant';
@@ -155,6 +155,12 @@ export class ServiceContext extends Resource {
     await this.networkManager.open();
 
     await this.echoHost.open(ctx);
+    await this.echoHost.addReplicator(
+      new EchoEdgeReplicator({
+        url: `ws://localhost:8787/replicate/00000000000`,
+      }),
+    );
+
     await this.metadataStore.load();
     await this.spaceManager.open();
     await this.identityManager.open(ctx);

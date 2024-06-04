@@ -16,3 +16,4 @@ export * from './text';
 export * from './echo-handler';
 export * from './client';
 export * from './host';
+export * from './edge/echo-edge-replicator';

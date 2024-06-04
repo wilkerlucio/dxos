@@ -23,6 +23,7 @@ export class EchoEdgeReplicator implements EchoReplicator {
 
   constructor({ url }: EchoEdgeReplicatorParams) {
     this._url = url;
+    log.info('created', { url });
   }
 
   async connect(context: EchoReplicatorContext): Promise<void> {
