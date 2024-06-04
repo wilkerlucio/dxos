@@ -2,6 +2,8 @@ import { PublicKey } from '@dxos/keys';
 import { describe, test } from '@dxos/test';
 import { EchoTestBuilder, createDataAssertion } from './echo-test-builder';
 import { EchoEdgeReplicator } from '../edge/echo-edge-replicator';
+import { sleep } from 'effect/Clock';
+import { log } from '@dxos/log';
 
 // Requires wrangler running.
 describe.only('edge integration', () => {
@@ -29,7 +31,15 @@ describe.only('edge integration', () => {
     await using db1 = await peer1.createDatabase(spaceKey);
     await dataAssertion.seed(db1);
 
+    const root = db1._automerge._automergeDocLoader.getSpaceRootDocHandle();
+    log.info('objects', {
+      root: root.documentId,
+      ...root.docSync().links,
+    });
+
     await using db2 = await peer2.openDatabase(spaceKey, db1.rootUrl!);
+    log.break();
+    await sleep(1000); // Wait for replication.
     await dataAssertion.verify(db2);
   });
 });

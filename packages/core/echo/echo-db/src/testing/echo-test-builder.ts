@@ -14,6 +14,7 @@ import { createTestLevel } from '@dxos/kv-store/testing';
 import { EchoClient } from '../client';
 import { type EchoDatabase } from '../database';
 import { EchoHost } from '../host';
+import { log } from '@dxos/log';
 
 export class EchoTestBuilder extends Resource {
   private readonly _peers: EchoTestPeer[] = [];
@@ -138,6 +139,7 @@ export const createDataAssertion = ({
       const { objects } = await db.query().run();
       const received = objects.find((object) => object.id === seedObject.id);
       if (onlyObject) {
+        log.warn('objects', { objects });
         invariant(objects.length === 1);
       }
       invariant(isEqual({ ...received }, { ...seedObject }));

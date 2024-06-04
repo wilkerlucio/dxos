@@ -201,3 +201,4 @@ const ProtocolV1 = '1';
 // TODO(dmaretskyi): Protocol types.
 // TODO(dmaretskyi): Automerge core protocol vs websocket protocol.
 // TODO(dmaretskyi): Backpressure.
+// TODO(dmaretskyi): Worker share policy.

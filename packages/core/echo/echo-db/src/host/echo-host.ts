@@ -19,6 +19,7 @@ import { trace } from '@dxos/tracing';
 import { DatabaseRoot } from './database-root';
 import { createSelectedDocumentsIterator } from './documents-iterator';
 import { QueryServiceImpl } from '../query';
+import { log } from '@dxos/log';
 
 const INDEXER_CONFIG: IndexConfig = {
   enabled: true,
@@ -169,6 +170,7 @@ export class EchoHost extends Resource {
   // TODO(dmaretskyi): Change to document id.
   async openSpaceRoot(automergeUrl: AutomergeUrl): Promise<DatabaseRoot> {
     invariant(this._lifecycleState === LifecycleState.OPEN);
+    log.info('find', { automergeUrl });
     const handle = this._automergeHost.repo.find(automergeUrl);
     invariant(!this._roots.has(handle.documentId), 'Root document already exists.');
     const root = new DatabaseRoot(handle);
