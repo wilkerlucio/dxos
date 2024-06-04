@@ -152,7 +152,8 @@
     "overrides": {
       "ipfs-utils": "9.0.14",
       "nan": "2.19.0",
-      "@automerge/automerge-wasm": "npm:@dxos/automerge-wasm@^0.17.1"
+      "@automerge/automerge-wasm": "npm:@dxos/automerge-wasm@^0.17.1",
+      "@radix-ui/react-popper": "1.1.4-rc.8"
     },
     "patchedDependencies": {
       "@nx/js@19.1.0": "patches/@nx__js@19.1.0.patch",
@@ -160,7 +161,8 @@
       "memdown@5.1.0": "patches/memdown@5.1.0.patch",
       "random-access-idb@1.2.2": "patches/random-access-idb@1.2.2.patch",
       "ts-node@10.9.1": "patches/ts-node@10.9.1.patch",
-      "uuid@8.3.2": "patches/uuid@8.3.2.patch"
+      "uuid@8.3.2": "patches/uuid@8.3.2.patch",
+      "@radix-ui/react-popper@1.1.4-rc.8": "patches/@radix-ui__react-popper@1.1.4-rc.8.patch"
     }
   }
 }
