@@ -6,5 +6,5 @@ import * as NaturalGlobalTooltip from '@dxos/react-global-tooltip';
 
 export const GlobalTooltip = {
   Root: NaturalGlobalTooltip.GlobalTooltipRoot,
-  Anchor: NaturalGlobalTooltip.GlobalTooltipAnchor,
+  Trigger: NaturalGlobalTooltip.GlobalTooltipTrigger,
 };

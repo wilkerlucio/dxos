@@ -147,7 +147,7 @@ const NodePlankHeading = ({
   const { dispatch } = useIntent();
   const ActionRoot = node && popoverAnchorId === `dxos.org/ui/${DECK_PLUGIN}/${node.id}` ? Popover.Anchor : Fragment;
   return (
-    <GlobalTooltip.Anchor asChild>
+    <GlobalTooltip.Trigger asChild>
       <PlankHeading.Root {...(part[0] !== 'main' && { classNames: 'pie-1' })} data-tooltip='Hello world'>
         <ActionRoot>
           {node ? (
@@ -231,7 +231,7 @@ const NodePlankHeading = ({
           )}
         </PlankHeading.Controls>
       </PlankHeading.Root>
-    </GlobalTooltip.Anchor>
+    </GlobalTooltip.Trigger>
   );
 };
 

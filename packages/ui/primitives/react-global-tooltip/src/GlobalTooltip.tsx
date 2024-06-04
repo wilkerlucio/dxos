@@ -23,6 +23,7 @@ import React, {
   forwardRef,
   type MutableRefObject,
   type ReactNode,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -48,11 +49,14 @@ type GlobalTooltipContextValue = {
   contentId: string;
   open: boolean;
   stateAttribute: 'closed' | 'delayed-open' | 'instant-open';
-  anchors: Set<HTMLButtonElement>;
-  addAnchor: (el: HTMLButtonElement | null) => void;
-  removeAnchor: (el: HTMLButtonElement | null) => void;
   trigger: TooltipTriggerElement | null;
   onTriggerChange(trigger: TooltipTriggerElement | null): void;
+  onTriggerPointerMove(event: ReactPointerEvent): void;
+  onTriggerPointerLeave(): void;
+  onTriggerPointerDown(): void;
+  onTriggerFocus(): void;
+  onTriggerBlur(): void;
+  onTriggerClick(): void;
   onTriggerEnter(): void;
   onTriggerLeave(): void;
   onOpen(): void;
@@ -204,9 +208,7 @@ const GlobalTooltipRoot: FC<GobalTooltipRootProps> = (props: ScopedProps<GobalTo
 
   const handlePointerUp = useCallback(() => (isPointerDownRef.current = false), []);
 
-  const anchor = useRef<HTMLDivElement | null>(null);
-
-  const _onPointerMove = (event: PointerEvent) => {
+  const onTriggerPointerMove = (event: ReactPointerEvent) => {
     if (event.pointerType === 'touch') {
       return;
     }
@@ -216,70 +218,53 @@ const GlobalTooltipRoot: FC<GobalTooltipRootProps> = (props: ScopedProps<GobalTo
     }
   };
 
-  const _onPointerLeave = () => {
+  const onTriggerPointerLeave = () => {
     onTriggerLeave();
     hasPointerMoveOpenedRef.current = false;
   };
 
-  const _onPointerDown = () => {
+  const onTriggerPointerDown = () => {
     isPointerDownRef.current = true;
     document.addEventListener('pointerup', handlePointerUp, { once: true });
   };
 
-  const _onFocus = () => {
+  const onTriggerFocus = () => {
     if (!isPointerDownRef.current) {
       onOpen();
     }
   };
 
-  const _onBlur = onClose;
-  const _onClick = onClose;
-
-  const [anchors, setAnchors] = useState<Set<HTMLButtonElement>>(new Set());
-
-  const addAnchor = useCallback(
-    (el: HTMLButtonElement | null) => {
-      if (el && !anchors.has(el)) {
-        setAnchors(new Set([...Array.from(anchors), el]));
-      }
-    },
-    [anchors],
-  );
-
-  const removeAnchor = useCallback(
-    (el: HTMLButtonElement | null) => {
-      if (el && anchors.has(el)) {
-        anchors.delete(el);
-        setAnchors(new Set(Array.from(anchors)));
-      }
-    },
-    [anchors],
-  );
+  const onTriggerBlur = onClose;
+  const onTriggerClick = onClose;
 
   return (
     <PopperPrimitive.Root {...popperScope}>
       <GlobalTooltipContextProvider
         scope={__scopeGlobalTooltip}
-        contentId={contentId}
-        open={open}
-        stateAttribute={stateAttribute}
         onTriggerChange={setTrigger}
-        trigger={trigger}
-        anchors={anchors}
-        addAnchor={addAnchor}
-        removeAnchor={removeAnchor}
         onOpen={handleOpen}
         onClose={handleClose}
-        disableHoverableContent={disableHoverableContent}
-        isPointerInTransitRef={isPointerInTransitRef}
-        onPointerInTransitChange={onPointerInTransitChange}
-        isOpenDelayed={isOpenDelayed}
-        delayDuration={delayDuration}
-        onTriggerEnter={onTriggerEnter}
-        onTriggerLeave={onTriggerLeave}
+        {...{
+          contentId,
+          open,
+          stateAttribute,
+          trigger,
+          disableHoverableContent,
+          isPointerInTransitRef,
+          onPointerInTransitChange,
+          isOpenDelayed,
+          delayDuration,
+          onTriggerEnter,
+          onTriggerLeave,
+          onTriggerPointerMove,
+          onTriggerPointerLeave,
+          onTriggerPointerDown,
+          onTriggerFocus,
+          onTriggerBlur,
+          onTriggerClick,
+        }}
       >
         {children}
-        <PopperPrimitive.Anchor asChild {...popperScope} ref={anchor} />
       </GlobalTooltipContextProvider>
     </PopperPrimitive.Root>
   );
@@ -291,27 +276,37 @@ GlobalTooltipRoot.displayName = GLOBAL_TOOLTIP_NAME;
  * TooltipAnchor
  * ----------------------------------------------------------------------------------------------- */
 
-type GlobalTooltipAnchorProps = ComponentPropsWithRef<typeof Primitive.button> & { asChild?: boolean };
+type GlobalTooltipTriggerProps = ComponentPropsWithRef<typeof Primitive.button> & { asChild?: boolean };
 
-const GlobalTooltipAnchor = forwardRef<HTMLButtonElement, GlobalTooltipAnchorProps>(
-  (props: ScopedProps<GlobalTooltipAnchorProps>, forwardedRef) => {
+const GlobalTooltipTrigger = forwardRef<HTMLButtonElement, GlobalTooltipTriggerProps>(
+  (props: ScopedProps<GlobalTooltipTriggerProps>, forwardedRef) => {
     const { __scopeGlobalTooltip, asChild, ...anchorProps } = props;
     const ref = useRef<HTMLButtonElement | null>(null);
     const composedRefs = useComposedRefs(forwardedRef, ref);
-    const { addAnchor, removeAnchor } = useGlobalTooltipContext('GlobalTooltipAnchor', __scopeGlobalTooltip);
+    const {
+      onTriggerBlur,
+      onTriggerClick,
+      onTriggerFocus,
+      onTriggerPointerDown,
+      onTriggerPointerMove,
+      onTriggerPointerLeave,
+    } = useGlobalTooltipContext('GlobalTooltipAnchor', __scopeGlobalTooltip);
 
     const Root = asChild ? Slot : Primitive.button;
 
-    useEffect(() => {
-      addAnchor(ref.current);
-      console.log('[add anchor]', ref.current);
-      () => {
-        console.log('[remove anchor]', ref.current);
-        removeAnchor(ref.current);
-      };
-    }, [ref.current]);
-
-    return <Root {...anchorProps} ref={composedRefs} />;
+    // todo(thure): Compose these callbacks…?
+    return (
+      <Root
+        {...anchorProps}
+        onBlur={onTriggerBlur}
+        onClick={onTriggerClick}
+        onFocus={onTriggerFocus}
+        onPointerDown={onTriggerPointerDown}
+        onPointerMove={onTriggerPointerMove}
+        onPointerLeave={onTriggerPointerLeave}
+        ref={composedRefs}
+      />
+    );
   },
 );
 
@@ -756,14 +751,14 @@ const Root = GlobalTooltipRoot;
 const Portal = TooltipPortal;
 const Content = TooltipContent;
 const Arrow = TooltipArrow;
-const Anchor = GlobalTooltipAnchor;
+const Anchor = GlobalTooltipTrigger;
 
 export {
   createTooltipScope,
   useGlobalTooltipContext,
   //
   GlobalTooltipRoot,
-  GlobalTooltipAnchor,
+  GlobalTooltipTrigger,
   TooltipPortal,
   TooltipContent,
   TooltipArrow,
