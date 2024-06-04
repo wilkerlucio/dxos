@@ -17,14 +17,12 @@ describe.only('edge integration', () => {
     peer1.host.addReplicator(
       new EchoEdgeReplicator({
         url: `ws://localhost:8787/replicate/00000000000`,
-        remotePeerId: 'wrangler',
       }),
     );
 
     peer2.host.addReplicator(
       new EchoEdgeReplicator({
         url: `ws://localhost:8787/replicate/00000000000`,
-        remotePeerId: 'wrangler',
       }),
     );
 
