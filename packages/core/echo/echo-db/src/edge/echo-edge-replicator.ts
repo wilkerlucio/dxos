@@ -145,7 +145,7 @@ class EdgeReplicatorConnection extends Resource implements ReplicatorConnection 
     invariant(binary instanceof Uint8Array);
 
     const message: Message = cbor.decode(binary);
-    log.info('recv', { message });
+    log.info('recv', { type: message.type, senderId: message.senderId, targetId: message.targetId, documentId: message.documentId });
     this._processMessage(message);
   };
 
@@ -191,7 +191,7 @@ class EdgeReplicatorConnection extends Resource implements ReplicatorConnection 
 
   private _sendMessage(message: Message) {
     invariant(this._socket, 'Not connected');
-    log.info('send', { message });
+    log.info('send', { type: message.type, senderId: message.senderId, targetId: message.targetId, documentId: message.documentId });
     const encoded = cbor.encode(message);
     this._socket.send(bufferToArray(encoded));
   }
