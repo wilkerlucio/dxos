@@ -157,7 +157,7 @@ export class ServiceContext extends Resource {
     await this.echoHost.open(ctx);
     await this.echoHost.addReplicator(
       new EchoEdgeReplicator({
-        url: `ws://localhost:8787/replicate/00000000000`,
+        url: `ws://edge-db.dxos.workers.dev/replicate/00000000000`,
       }),
     );
 
