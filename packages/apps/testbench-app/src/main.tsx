@@ -16,7 +16,7 @@ import { DensityProvider, type ThemeMode, ThemeProvider } from '@dxos/react-ui';
 import { defaultTx } from '@dxos/react-ui-theme';
 import { TRACE_PROCESSOR } from '@dxos/tracing';
 
-import { AppContainer, Main, Error, Connector } from './components';
+import { AppContainer, Main, Error } from './components';
 import { getConfig } from './config';
 import { ItemType, DocumentType } from './data';
 import translations from './translations';
@@ -37,10 +37,6 @@ const router = createBrowserRouter([
         <Main />
       </AppContainer>
     ),
-  },
-  {
-    path: '/test',
-    element: <Connector />,
   },
 ]);
 
