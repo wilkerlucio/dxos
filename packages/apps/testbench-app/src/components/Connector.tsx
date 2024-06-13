@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 
 import { PublicKey } from '@dxos/keys';
 import { useClient } from '@dxos/react-client';
+import { useIdentity } from '@dxos/react-client/dist/types/src/halo';
 import { Button, Input, Toolbar } from '@dxos/react-ui';
 
 import { Peer } from '../webrtc/client';
@@ -21,7 +22,7 @@ export const Connector = () => {
   const [peer, setPeer] = useState<Peer>();
   const [state, setState] = useState<string>();
   const [invitation, setInvitation] = useState<string>();
-  const identity = client.halo.identity.get();
+  const identity = useIdentity();
   useEffect(() => {
     if (identity) {
       setUser(identity.identityKey.toHex());
