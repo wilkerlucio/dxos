@@ -27,6 +27,8 @@ const getCurrentBranchName = (p = process.cwd()) => {
     : false;
 };
 
+console.log('Current branch:', getCurrentBranchName());
+
 // https://vitejs.dev/config
 export default defineConfig({
   server: {
