@@ -290,6 +290,7 @@ export class Observability {
               })
               .map(([key, value]) => [key, value.value]),
           ),
+        consoleDiagLogLevel: 'DEBUG',
       });
       log('otel metrics enabled');
     } else {
