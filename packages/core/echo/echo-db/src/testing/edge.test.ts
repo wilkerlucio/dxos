@@ -31,7 +31,7 @@ describe.only('edge integration', () => {
     await using db1 = await peer1.createDatabase(spaceKey);
     await dataAssertion.seed(db1);
 
-    const root = db1._automerge._automergeDocLoader.getSpaceRootDocHandle();
+    const root = db1.coreDatabase._automergeDocLoader.getSpaceRootDocHandle();
     log.info('objects', {
       root: root.documentId,
       ...root.docSync().links,
