@@ -3,8 +3,9 @@
 //
 
 import { DotOutline } from '@phosphor-icons/react';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
+import { useIntentDispatcher, LayoutAction } from '@dxos/app-framework';
 import { type Graph, type ActionLike, isActionGroup, isAction } from '@dxos/app-graph';
 import { Keyboard, keySymbols } from '@dxos/keyboard';
 import { Button, Dialog, useTranslation, toLocalizedString } from '@dxos/react-ui';
@@ -18,6 +19,7 @@ import { KEY_BINDING, NAVTREE_PLUGIN } from '../meta';
 export const CommandsDialogContent = ({ graph, selected: initial }: { graph?: Graph; selected?: string }) => {
   const { t } = useTranslation(NAVTREE_PLUGIN);
   const [selected, setSelected] = useState<string | undefined>(initial);
+  const dispatch = useIntentDispatcher();
 
   // Traverse graph.
   // TODO(burdon): Factor out commonality with shortcut dialog.
@@ -50,10 +52,7 @@ export const CommandsDialogContent = ({ graph, selected: initial }: { graph?: Gr
   }, [graph]);
 
   const group = allActions.find(({ id }) => id === selected);
-  const actions = isActionGroup(group) ? group.actions() : allActions;
-
-  // TODO(burdon): Remove.
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const actions = isActionGroup(group) && graph ? graph.actions(group) : allActions;
 
   return (
     <Dialog.Content classNames={['md:max-is-[30rem] overflow-hidden mbs-12']}>
@@ -61,8 +60,8 @@ export const CommandsDialogContent = ({ graph, selected: initial }: { graph?: Gr
 
       {/* TODO(burdon): BUG: Overscrolls container. */}
       <SearchList.Root label={t('commandlist input placeholder')} classNames='flex flex-col grow overflow-hidden my-2'>
-        <SearchList.Input placeholder={t('commandlist input placeholder')} classNames={mx('px-1 my-2')} />
-        <SearchList.Content classNames={['max-bs-[30rem] overflow-auto']}>
+        <SearchList.Input placeholder={t('commandlist input placeholder')} classNames='px-1 my-2' />
+        <SearchList.Content classNames='max-bs-[24rem] overflow-auto'>
           {actions?.map((action) => {
             const label = toLocalizedString(action.properties.label, t);
             const shortcut =
@@ -84,11 +83,10 @@ export const CommandsDialogContent = ({ graph, selected: initial }: { graph?: Gr
                     return;
                   }
 
-                  // TODO(burdon): Remove hack to close dialog (via hook?)
-                  buttonRef.current?.click();
+                  void dispatch({ action: LayoutAction.SET_LAYOUT, data: { element: 'dialog', state: false } });
                   setTimeout(() => {
-                    const node = action.nodes({ direction: 'inbound' })[0];
-                    void (isAction(action) && action.data({ node, caller: KEY_BINDING }));
+                    const node = graph?.nodes(action, { relation: 'inbound' })[0];
+                    void (node && isAction(action) && action.data({ node, caller: KEY_BINDING }));
                   });
                 }}
                 classNames='flex items-center gap-2'
@@ -105,7 +103,7 @@ export const CommandsDialogContent = ({ graph, selected: initial }: { graph?: Gr
       </SearchList.Root>
 
       <Dialog.Close asChild>
-        <Button ref={buttonRef} variant='primary' classNames='mbs-2'>
+        <Button variant='primary' classNames='mbs-2'>
           {t('close label', { ns: 'os' })}
         </Button>
       </Dialog.Close>

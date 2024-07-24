@@ -32,6 +32,9 @@
       "path": "../../../common/log"
     },
     {
+      "path": "../../../core/echo/echo-schema"
+    },
+    {
       "path": "../../../core/echo/echo-signals"
     },
     {
@@ -51,6 +54,9 @@
     },
     {
       "path": "../../types"
+    },
+    {
+      "path": "../plugin-graph"
     }
   ]
 }

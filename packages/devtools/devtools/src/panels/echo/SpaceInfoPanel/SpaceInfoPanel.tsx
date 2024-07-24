@@ -3,7 +3,7 @@
 //
 
 import { ArrowClockwise } from '@phosphor-icons/react';
-import React, { type FC } from 'react';
+import React, { type FC, useState } from 'react';
 
 import { MulticastObservable } from '@dxos/async';
 import { SpaceState } from '@dxos/protocols/proto/dxos/client/services';
@@ -19,7 +19,7 @@ import { DataSpaceSelector } from '../../../containers';
 import { useDevtoolsState, useSpacesInfo } from '../../../hooks';
 
 export const SpaceInfoPanel: FC = () => {
-  const [, forceUpdate] = React.useState({});
+  const [, forceUpdate] = useState({});
   const { space } = useDevtoolsState();
 
   // TODO(dmaretskyi): We don't need SpaceInfo anymore?
@@ -29,7 +29,7 @@ export const SpaceInfoPanel: FC = () => {
 
   const toggleActive = async () => {
     const state = space!.state.get();
-    if (state === SpaceState.INACTIVE) {
+    if (state === SpaceState.SPACE_INACTIVE) {
       await space!.open();
     } else {
       await space!.close();
@@ -46,7 +46,7 @@ export const SpaceInfoPanel: FC = () => {
           </Toolbar.Button>
           <div className='grow' />
           <Toolbar.Button onClick={toggleActive}>
-            {space?.state.get() === SpaceState.INACTIVE ? 'Open' : 'Close'}
+            {space?.state.get() === SpaceState.SPACE_INACTIVE ? 'Open' : 'Close'}
           </Toolbar.Button>
         </Toolbar.Root>
       }

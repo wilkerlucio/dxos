@@ -12,7 +12,8 @@ import { create } from '@dxos/echo-schema';
 import { faker } from '@dxos/random';
 import { useClient } from '@dxos/react-client';
 import { type Space } from '@dxos/react-client/echo';
-import { ClientRepeater, FullscreenDecorator } from '@dxos/react-client/testing';
+import { ClientRepeater } from '@dxos/react-client/testing';
+import { withFullscreen, withTheme } from '@dxos/storybook-utils';
 
 import { Graph } from './Graph';
 
@@ -29,7 +30,7 @@ const Story = () => {
     generator.addSchemas();
     void generator.createObjects({ [TestSchemaType.organization]: 20, [TestSchemaType.contact]: 50 }).catch();
 
-    const view = space.db.add(create(ViewType, { title: '', type: '' }));
+    const view = space.db.add(create(ViewType, { name: '', type: '' }));
 
     setSpace(space);
     setView(view);
@@ -45,8 +46,8 @@ const Story = () => {
 export default {
   title: 'plugin-explorer/Graph',
   component: Graph,
-  render: () => <ClientRepeater component={Story} createSpace schema={[ViewType]} />,
-  decorators: [FullscreenDecorator()],
+  render: () => <ClientRepeater component={Story} createSpace types={[ViewType]} />,
+  decorators: [withTheme, withFullscreen()],
   parameters: {
     layout: 'fullscreen',
   },

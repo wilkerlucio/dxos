@@ -40,6 +40,9 @@
       "path": "../../common/node-std"
     },
     {
+      "path": "../../common/tracing"
+    },
+    {
       "path": "../../common/util"
     },
     {
@@ -49,6 +52,9 @@
       "path": "../../core/protocols"
     },
     {
+      "path": "../client"
+    },
+    {
       "path": "../client-protocol"
     },
     {
@@ -56,9 +62,6 @@
     },
     {
       "path": "../config"
-    },
-    {
-      "path": "../react-client"
     }
   ]
 }

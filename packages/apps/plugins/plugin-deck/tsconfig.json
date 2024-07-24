@@ -47,16 +47,25 @@
       "path": "../../../ui/react-ui"
     },
     {
+      "path": "../../../ui/react-ui-attention"
+    },
+    {
       "path": "../../../ui/react-ui-deck"
     },
     {
       "path": "../../../ui/react-ui-mosaic"
     },
     {
+      "path": "../../../ui/react-ui-text-tooltip"
+    },
+    {
       "path": "../../../ui/react-ui-theme"
     },
     {
       "path": "../../../ui/storybook-utils"
+    },
+    {
+      "path": "../plugin-attention"
     },
     {
       "path": "../plugin-graph"

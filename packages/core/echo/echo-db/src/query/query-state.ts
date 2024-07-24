@@ -3,8 +3,8 @@
 //
 
 import { type DocumentId } from '@dxos/automerge/automerge-repo';
-import { LifecycleState, Resource } from '@dxos/context';
-import { type AutomergeHost, getSpaceKeyFromDoc } from '@dxos/echo-pipeline';
+import { Context, LifecycleState, Resource } from '@dxos/context';
+import { type AutomergeHost, createIdFromSpaceKey, getSpaceKeyFromDoc } from '@dxos/echo-pipeline';
 import { type Indexer, type IndexQuery } from '@dxos/indexing';
 import { invariant } from '@dxos/invariant';
 import { PublicKey } from '@dxos/keys';
@@ -75,7 +75,8 @@ export class QueryState extends Resource {
     return this._results;
   }
 
-  @trace.span({ showInBrowserTimeline: true })
+  // https://github.com/open-telemetry/semantic-conventions/blob/main/docs/attributes-registry/db.md#generic-database-attributes
+  @trace.span({ showInBrowserTimeline: true, op: 'db.query', attributes: { 'db.system': 'echo' } })
   async execQuery(): Promise<QueryRunResult> {
     const filter = Filter.fromProto(this._params.request.filter);
     const beginQuery = performance.now();
@@ -102,18 +103,13 @@ export class QueryState extends Resource {
             // Indexes created by older versions of the indexer do not have the spaceKey in the index.
             // If the spaceKey is not in the index, we need to load the document to get it.
 
-            const handle =
-              this._params.automergeHost.repo.handles[documentId as DocumentId] ??
-              this._params.automergeHost.repo.find(documentId as DocumentId);
-
-            if (!handle.isReady()) {
-              if (this._firstRun) {
-                this.metrics.documentsLoaded++;
-              }
-              // `whenReady` creates a timeout so we guard it with an if to skip it if the handle is already ready.
-              await handle.whenReady();
+            if (this._firstRun) {
+              this.metrics.documentsLoaded++;
             }
 
+            const handle = await this._params.automergeHost.loadDoc(Context.default(), documentId as DocumentId);
+
+            // `whenReady` creates a timeout so we guard it with an if to skip it if the handle is already ready.
             if (this._ctx.disposed) {
               return;
             }
@@ -137,9 +133,11 @@ export class QueryState extends Resource {
 
           return {
             id: objectId,
+            documentId,
+            spaceId: await createIdFromSpaceKey(PublicKey.from(spaceKey)),
             spaceKey: PublicKey.from(spaceKey),
             rank: result.rank,
-          };
+          } satisfies QueryResult;
         }),
       )
     ).filter(nonNullable);
@@ -153,6 +151,7 @@ export class QueryState extends Resource {
     }
 
     const areResultsUnchanged =
+      !this._firstRun &&
       this._results.length === results.length &&
       this._results.every((oldResult) => results.some((result) => result.id === oldResult.id)) &&
       results.every((result) => this._results.some((oldResult) => oldResult.id === result.id));
@@ -180,7 +179,9 @@ const filterToIndexQuery = (filter: Filter): IndexQuery => {
   );
   if (filter.type || (filter.or.length > 0 && filter.or.every((subFilter) => !subFilter.not && subFilter.type))) {
     return {
-      typenames: filter.type?.itemId ? [filter.type.itemId] : filter.or.map((f) => f.type?.itemId).filter(nonNullable),
+      typenames: filter.type?.objectId
+        ? [filter.type.objectId]
+        : filter.or.map((f) => f.type?.objectId).filter(nonNullable),
       inverted: filter.not,
     };
   } else {

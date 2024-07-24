@@ -2,9 +2,10 @@
 // Copyright 2024 DXOS.org
 //
 
-import React, { type FC } from 'react';
+import React, { useEffect, type FC } from 'react';
 
 import { type DocumentType } from '@braneframe/types';
+import { useResolvePlugin, parseLayoutPlugin } from '@dxos/app-framework';
 import { createDocAccessor, getSpace } from '@dxos/react-client/echo';
 import { useIdentity } from '@dxos/react-client/halo';
 import { useThemeContext, useTranslation } from '@dxos/react-ui';
@@ -18,6 +19,8 @@ import {
   Toolbar,
   useActionHandler,
   useFormattingState,
+  useCommentState,
+  useCommentClickListener,
 } from '@dxos/react-ui-editor';
 import { sectionToolbarLayout } from '@dxos/react-ui-stack';
 import { focusRing, mx } from '@dxos/react-ui-theme';
@@ -28,13 +31,19 @@ const DocumentSection: FC<{
   document: DocumentType;
   extensions: Extension[];
   toolbar?: boolean;
-}> = ({ document, extensions }) => {
+  onCommentClick?: (id: string) => void;
+}> = ({ document, extensions, onCommentClick }) => {
   const { t } = useTranslation(MARKDOWN_PLUGIN);
   const identity = useIdentity();
   const space = getSpace(document);
 
   const { themeMode } = useThemeContext();
   const [formattingState, formattingObserver] = useFormattingState();
+  const [commentState, commentObserver] = useCommentState();
+  const commentClickObserver = useCommentClickListener((id) => {
+    onCommentClick?.(id);
+  });
+
   const {
     parentRef,
     view: editorView,
@@ -44,6 +53,8 @@ const DocumentSection: FC<{
       doc: document.content?.content,
       extensions: [
         formattingObserver,
+        commentObserver,
+        commentClickObserver,
         createBasicExtensions({ placeholder: t('editor placeholder') }),
         createMarkdownExtensions({ themeMode }),
         createThemeExtensions({
@@ -58,9 +69,19 @@ const DocumentSection: FC<{
         ...extensions,
       ],
     }),
-    [document, extensions, themeMode],
+    [document, document.content, extensions, themeMode],
   );
   const handleAction = useActionHandler(editorView);
+
+  const layoutPlugin = useResolvePlugin(parseLayoutPlugin);
+  const autoFocus = layoutPlugin?.provides?.layout?.scrollIntoView === document.id;
+
+  // Set focus
+  useEffect(() => {
+    if (autoFocus && editorView) {
+      editorView.focus();
+    }
+  }, [autoFocus, editorView]);
 
   return (
     <div role='none' className='flex flex-col'>
@@ -72,12 +93,13 @@ const DocumentSection: FC<{
       />
       {toolbar && (
         <Toolbar.Root
-          state={formattingState}
+          state={formattingState && { ...formattingState, ...commentState }}
           onAction={handleAction}
           classNames={['z-[1] invisible group-focus-within/section:visible', sectionToolbarLayout]}
         >
           <Toolbar.Markdown />
           <Toolbar.Separator />
+          <Toolbar.Actions />
         </Toolbar.Root>
       )}
     </div>

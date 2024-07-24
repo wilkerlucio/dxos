@@ -82,7 +82,10 @@ export const ObservabilityPlugin = (options: {
         return;
       }
 
-      if (!state.values.notified) {
+      const environment = clientPlugin?.provides?.client?.config?.values.runtime?.app?.env?.DX_ENVIRONMENT;
+      const notify =
+        environment && environment !== 'circleci' && !environment.endsWith('.local') && !environment.endsWith('.lan');
+      if (!state.values.notified && notify) {
         await dispatch({
           action: LayoutAction.SET_LAYOUT,
           data: {
@@ -150,11 +153,20 @@ export const ObservabilityPlugin = (options: {
         setupTelemetryListeners(options.namespace, client, observability);
 
         await Promise.all([
-          observability.setIdentityTags(client),
+          observability.setIdentityTags(client.services.services),
           observability.startRuntimeMetrics(client),
-          observability.startNetworkMetrics(client),
+          observability.startNetworkMetrics(client.services.services),
           observability.startSpacesMetrics(client, options.namespace),
         ]);
+
+        if (!client.halo.identity.get()) {
+          const subscription = client.halo.identity.subscribe(async (identity) => {
+            if (identity && observability) {
+              await observability.setIdentityTags(client.services.services);
+              subscription.unsubscribe();
+            }
+          });
+        }
       });
     },
     unload: async () => {

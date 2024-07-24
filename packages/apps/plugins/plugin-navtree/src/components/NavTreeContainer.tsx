@@ -9,13 +9,12 @@ import {
   LayoutAction,
   Surface,
   useIntent,
-  type PartIdentifier,
+  type LayoutCoordinate,
   useResolvePlugin,
   parseNavigationPlugin,
   SLUG_PATH_SEPARATOR,
   SLUG_COLLECTION_INDICATOR,
 } from '@dxos/app-framework';
-import { isSpace } from '@dxos/react-client/echo';
 import { ElevationProvider, useMediaQuery, useSidebars } from '@dxos/react-ui';
 import { Path, type MosaicDropEvent, type MosaicMoveEvent } from '@dxos/react-ui-mosaic';
 import {
@@ -49,14 +48,14 @@ export const NavTreeContainer = ({
   activeIds,
   attended,
   popoverAnchorId,
-  part,
+  layoutCoordinate,
 }: {
   root: TreeNode;
   paths: Map<string, string[]>;
   activeIds: Set<string>;
   attended: Set<string>;
   popoverAnchorId?: string;
-  part?: PartIdentifier;
+  layoutCoordinate?: LayoutCoordinate;
 }) => {
   const { closeNavigationSidebar } = useSidebars(NAVTREE_PLUGIN);
   const [isLg] = useMediaQuery('lg', { ssr: false });
@@ -65,11 +64,9 @@ export const NavTreeContainer = ({
   const isDeckModel = navPlugin?.meta.id === 'dxos.org/plugin/deck';
 
   const handleSelect: NavTreeContextType['onSelect'] = async ({ node }: { node: TreeNode }) => {
-    if (!node.data || isSpace(node.data)) {
+    if (!node.data) {
       return;
     }
-
-    await dispatch({ action: LayoutAction.SCROLL_INTO_VIEW, data: { id: node.id } });
 
     await dispatch({
       action: NavigationAction.OPEN,
@@ -86,6 +83,8 @@ export const NavTreeContainer = ({
               },
       },
     });
+
+    await dispatch({ action: LayoutAction.SCROLL_INTO_VIEW, data: { id: node.id } });
 
     const defaultAction = node.actions.find((action) => action.properties.disposition === 'default');
     if (defaultAction && 'invoke' in defaultAction) {
@@ -239,7 +238,7 @@ export const NavTreeContainer = ({
             renderPresence={renderPresence}
           />
         </div>
-        <NavTreeFooter part={part} />
+        <NavTreeFooter layoutCoordinate={layoutCoordinate} />
       </div>
     </ElevationProvider>
   );

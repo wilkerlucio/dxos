@@ -3,9 +3,10 @@
 //
 
 import type * as A from '@dxos/automerge/automerge';
-import type { DocHandle } from '@dxos/automerge/automerge-repo';
+import type { AutomergeUrl, DocHandle } from '@dxos/automerge/automerge-repo';
 import { getSpaceKeyFromDoc } from '@dxos/echo-pipeline';
-import type { SpaceDoc } from '@dxos/echo-protocol';
+import { type SpaceDoc, SpaceDocVersion } from '@dxos/echo-protocol';
+import { invariant } from '@dxos/invariant';
 
 import { measureDocMetrics, type DocMetrics } from './automerge-metrics';
 
@@ -20,8 +21,25 @@ export class DatabaseRoot {
     return !!this._rootHandle.docSync();
   }
 
+  get handle(): DocHandle<SpaceDoc> {
+    return this._rootHandle;
+  }
+
+  docSync(): A.Doc<SpaceDoc> | null {
+    return this._rootHandle.docSync();
+  }
+
+  getVersion(): SpaceDocVersion | null {
+    const doc = this.docSync();
+    if (!doc) {
+      return null;
+    }
+
+    return doc.version ?? SpaceDocVersion.LEGACY;
+  }
+
   getSpaceKey(): string | null {
-    const doc = this._docSync();
+    const doc = this.docSync();
     if (!doc) {
       return null;
     }
@@ -30,7 +48,7 @@ export class DatabaseRoot {
   }
 
   getInlineObjectCount(): number | null {
-    const doc = this._docSync();
+    const doc = this.docSync();
     if (!doc) {
       return null;
     }
@@ -39,7 +57,7 @@ export class DatabaseRoot {
   }
 
   getLinkedObjectCount(): number | null {
-    const doc = this._docSync();
+    const doc = this.docSync();
     if (!doc) {
       return null;
     }
@@ -47,15 +65,18 @@ export class DatabaseRoot {
     return Object.keys(doc.links ?? {}).length;
   }
 
+  getAllLinkedDocuments(): AutomergeUrl[] {
+    const doc = this.docSync();
+    invariant(doc);
+
+    return Object.values(doc.links ?? {}) as AutomergeUrl[];
+  }
+
   measureMetrics(): DocMetrics | null {
-    const doc = this._docSync();
+    const doc = this.docSync();
     if (!doc) {
       return null;
     }
     return measureDocMetrics(doc);
-  }
-
-  private _docSync(): A.Doc<SpaceDoc> | null {
-    return this._rootHandle.docSync();
   }
 }

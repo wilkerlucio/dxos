@@ -11,7 +11,8 @@
     "module": "ESNext",
     "outDir": "dist",
     "types": [
-      "node"
+      "node",
+      "sharedworker"
     ]
   },
   "exclude": [
@@ -74,6 +75,9 @@
       "path": "../../sdk/shell"
     },
     {
+      "path": "../../ui/brand"
+    },
+    {
       "path": "../../ui/react-ui"
     },
     {
@@ -96,6 +100,9 @@
     },
     {
       "path": "../../ui/storybook-utils"
+    },
+    {
+      "path": "../plugins/plugin-attention"
     },
     {
       "path": "../plugins/plugin-chain"

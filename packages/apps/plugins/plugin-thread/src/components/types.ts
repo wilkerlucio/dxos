@@ -3,6 +3,7 @@
 //
 
 import { type ThreadType } from '@braneframe/types';
+import { type EchoReactiveObject } from '@dxos/echo-schema';
 import type { ThreadProps } from '@dxos/react-ui-thread';
 
 /**
@@ -19,10 +20,12 @@ import type { ThreadProps } from '@dxos/react-ui-thread';
  */
 export type ThreadContainerProps = {
   thread: ThreadType;
-  context?: { object?: string };
+  context?: EchoReactiveObject<any>;
   autoFocusTextbox?: boolean;
   onTextboxFocus?: () => void;
   detached?: boolean;
   onAttend?: () => void;
   onDelete?: () => void;
+  onResolve?: () => void;
+  onComment?: (thread: ThreadType) => void;
 } & Pick<ThreadProps, 'current'>;

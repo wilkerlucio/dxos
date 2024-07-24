@@ -7,11 +7,11 @@ import '@dxosTheme';
 import React, { type FC, useState } from 'react';
 
 import { faker } from '@dxos/random';
-import { FullscreenDecorator } from '@dxos/react-client/testing';
 import { DensityProvider } from '@dxos/react-ui';
+import { withFullscreen, withTheme } from '@dxos/storybook-utils';
 
 import { SearchResults, type SearchResultsProps } from './SearchResults';
-import { filterObjects } from '../../search';
+import { filterObjectsSync } from '../../search-sync';
 
 faker.seed(1);
 
@@ -33,7 +33,7 @@ export default {
   title: 'plugin-search/SearchResults',
   component: SearchResults,
   render: Story,
-  decorators: [FullscreenDecorator()],
+  decorators: [withTheme, withFullscreen()],
   parameters: {
     layout: 'fullscreen',
   },
@@ -51,7 +51,7 @@ const match = new RegExp(word, 'i');
 
 export const Default = {
   args: {
-    items: filterObjects(objects, match),
+    items: filterObjectsSync(objects, match),
     match,
   },
 };

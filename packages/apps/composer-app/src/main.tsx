@@ -7,9 +7,10 @@ import '@dxosTheme';
 import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import AttentionMeta from '@braneframe/plugin-attention/meta';
 import ChainMeta from '@braneframe/plugin-chain/meta';
 import ChessMeta from '@braneframe/plugin-chess/meta';
-import ClientMeta from '@braneframe/plugin-client/meta';
+import ClientMeta, { CLIENT_PLUGIN, ClientAction } from '@braneframe/plugin-client/meta';
 import DebugMeta from '@braneframe/plugin-debug/meta';
 import DeckMeta from '@braneframe/plugin-deck/meta';
 import ExplorerMeta from '@braneframe/plugin-explorer/meta';
@@ -39,14 +40,16 @@ import ScriptMeta from '@braneframe/plugin-script/meta';
 import SearchMeta from '@braneframe/plugin-search/meta';
 import SettingsMeta from '@braneframe/plugin-settings/meta';
 import SketchMeta from '@braneframe/plugin-sketch/meta';
-import SpaceMeta from '@braneframe/plugin-space/meta';
+import SpaceMeta, { SPACE_PLUGIN, SpaceAction } from '@braneframe/plugin-space/meta';
 import StackMeta from '@braneframe/plugin-stack/meta';
 import StatusBarMeta from '@braneframe/plugin-status-bar/meta';
 import TableMeta from '@braneframe/plugin-table/meta';
 import ThemeMeta from '@braneframe/plugin-theme/meta';
 import ThreadMeta from '@braneframe/plugin-thread/meta';
 import WildcardMeta from '@braneframe/plugin-wildcard/meta';
-import { createApp, NavigationAction, Plugin } from '@dxos/app-framework';
+import { DocumentType, TextType, CollectionType } from '@braneframe/types';
+import { LegacyTypes } from '@braneframe/types/migrations';
+import { createApp, NavigationAction, parseIntentPlugin, Plugin, resolvePlugin } from '@dxos/app-framework';
 import { createStorageObjects } from '@dxos/client-services';
 import { defs, SaveConfig } from '@dxos/config';
 import { registerSignalRuntime } from '@dxos/echo-signals';
@@ -56,16 +59,16 @@ import { createClientServices } from '@dxos/react-client';
 import { Status, ThemeProvider, Tooltip } from '@dxos/react-ui';
 import { defaultTx } from '@dxos/react-ui-theme';
 import { TRACE_PROCESSOR } from '@dxos/tracing';
-import { type JWTPayload } from '@dxos/web-auth';
 
-import { meta as BetaMeta } from './beta/BetaPlugin';
+import './globals';
+
 import { ResetDialog } from './components';
 import { setupConfig } from './config';
 import { appKey, INITIAL_CONTENT, INITIAL_TITLE } from './constants';
 import { steps } from './help';
+import { meta as WelcomeMeta } from './plugins/welcome/meta';
 import translations from './translations';
-
-import './globals';
+import { removeQueryParamByValue } from './util';
 
 const main = async () => {
   TRACE_PROCESSOR.setInstanceTag('app');
@@ -86,6 +89,7 @@ const main = async () => {
   }
 
   // Intentionally do not await, don't block app startup for telemetry.
+  // namespace has to match the value passed to sentryVitePlugin in vite.config.ts for sourcemaps to work.
   const observability = initializeAppObservability({ namespace: appKey, config });
 
   // TODO(nf): refactor.
@@ -97,7 +101,7 @@ const main = async () => {
     config.values.runtime?.app?.env?.DX_HOST
       ? undefined
       : () =>
-          new SharedWorker(new URL('@dxos/client/shared-worker', import.meta.url), {
+          new SharedWorker(new URL('./shared-worker', import.meta.url), {
             type: 'module',
             name: 'dxos-client-worker',
           }),
@@ -106,8 +110,9 @@ const main = async () => {
   );
   const isSocket = !!(globalThis as any).__args;
   const isPwa = config.values.runtime?.app?.env?.DX_PWA !== 'false';
-  const isDeck = localStorage.getItem('dxos.org/settings/layout/deck') === 'true';
-  const isDev = config.values.runtime?.app?.env?.DX_ENVIRONMENT !== 'production';
+  const isDeck = localStorage.getItem('dxos.org/settings/layout/disable-deck') !== 'true';
+  const isDev = !['production', 'staging'].includes(config.values.runtime?.app?.env?.DX_ENVIRONMENT);
+  const isExperimental = config.values.runtime?.app?.env?.DX_EXPERIMENTAL === 'true';
 
   const App = createApp({
     fallback: ({ error }) => (
@@ -119,8 +124,8 @@ const main = async () => {
     ),
     placeholder: (
       <ThemeProvider tx={defaultTx}>
-        <div className='flex bs-[100dvh] justify-center items-center'>
-          <Status indeterminate aria-label='Initializing' />
+        <div className='flex flex-col justify-end bs-[100dvh]'>
+          <Status indeterminate aria-label='Initializing' classNames='w-full' />
         </div>
       </ThemeProvider>
     ),
@@ -129,22 +134,25 @@ const main = async () => {
       ObservabilityMeta,
       ThemeMeta,
       // TODO(wittjosiah): Consider what happens to PWA updates when hitting error boundary.
-      isSocket ? NativeMeta : PwaMeta,
-      BetaMeta,
+      ...(!isSocket && isPwa ? [PwaMeta] : []),
+      ...(isSocket ? [NativeMeta] : []),
+      WelcomeMeta,
 
       // UX
+      AttentionMeta,
       isDeck ? DeckMeta : LayoutMeta,
       NavTreeMeta,
       SettingsMeta,
-      HelpMeta,
       StatusBarMeta,
 
-      // Data integrations
+      // Shell and help (client must precede help because help’s context depends on client’s)
       ClientMeta,
+      HelpMeta,
+
+      // Data integrations
       SpaceMeta,
       DebugMeta,
       FilesMeta,
-      GithubMeta,
       IpfsMeta,
       GptMeta,
 
@@ -161,14 +169,10 @@ const main = async () => {
       ExplorerMeta,
       FunctionMeta,
       InboxMeta,
-      GridMeta,
-      KanbanMeta,
       MapMeta,
       MarkdownMeta,
       MermaidMeta,
-      OutlinerMeta,
       PresenterMeta,
-      ScriptMeta,
       SketchMeta,
       StackMeta,
       TableMeta,
@@ -177,9 +181,11 @@ const main = async () => {
 
       // TODO(burdon): Currently last so that the search action is added at end of dropdown menu.
       SearchMeta,
+
+      ...(isExperimental ? [GithubMeta, GridMeta, KanbanMeta, OutlinerMeta, ScriptMeta] : []),
     ],
     plugins: {
-      [BetaMeta.id]: Plugin.lazy(() => import('./beta/BetaPlugin')),
+      [AttentionMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-attention')),
       [ChainMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-chain')),
       [ChessMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-chess')),
       [ClientMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-client'), {
@@ -188,31 +194,48 @@ const main = async () => {
         services,
         shell: './shell.html',
         onClientInitialized: async (client) => {
-          const url = new URL(window.location.href);
-          // Match CF only.
-          // TODO(burdon): Check for Server: cloudflare header.
-          //  https://developers.cloudflare.com/pages/configuration/serving-pages
-          if (!url.origin.endsWith('composer.space')) {
+          client.addTypes([
+            LegacyTypes.DocumentType,
+            LegacyTypes.FileType,
+            LegacyTypes.FolderType,
+            LegacyTypes.MessageType,
+            LegacyTypes.SectionType,
+            LegacyTypes.StackType,
+            LegacyTypes.TableType,
+            LegacyTypes.TextType,
+            LegacyTypes.ThreadType,
+          ]);
+        },
+        onReady: async (client, plugins) => {
+          const dispatch = resolvePlugin(plugins, parseIntentPlugin)?.provides.intent.dispatch;
+          if (!dispatch) {
             return;
           }
 
-          try {
-            // Retrieve the cookie.
-            const response = await fetch('/info');
-            if (!response.ok) {
-              throw new Error('Invalid response.');
-            }
-
-            const result: JWTPayload = await response.json();
-
-            // TODO(burdon): CamelCase vs. _ names.
-            await client.shell.setInvitationUrl({
-              invitationUrl: new URL(`?access_token=${result.access_token}`, window.location.origin).toString(),
-              deviceInvitationParam: 'deviceInvitationCode',
-              spaceInvitationParam: 'spaceInvitationCode',
+          const searchParams = new URLSearchParams(location.search);
+          const spaceInvitationCode = searchParams.get('spaceInvitationCode') ?? undefined;
+          const deviceInvitationCode = searchParams.get('deviceInvitationCode') ?? undefined;
+          if (deviceInvitationCode) {
+            await dispatch({
+              plugin: CLIENT_PLUGIN,
+              action: ClientAction.JOIN_IDENTITY,
+              data: { invitationCode: deviceInvitationCode },
             });
-          } catch (err) {
-            log.catch(err);
+
+            removeQueryParamByValue(deviceInvitationCode);
+          } else if (spaceInvitationCode && client.halo.identity.get()) {
+            await dispatch([
+              {
+                plugin: SPACE_PLUGIN,
+                action: SpaceAction.JOIN,
+                data: { invitationCode: spaceInvitationCode },
+              },
+              {
+                action: NavigationAction.OPEN,
+              },
+            ]);
+
+            removeQueryParamByValue(spaceInvitationCode);
           }
         },
       }),
@@ -228,7 +251,6 @@ const main = async () => {
       [InboxMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-inbox')),
       [IpfsMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-ipfs')),
       [KanbanMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-kanban')),
-      // DX_DECK=1
       ...(isDeck
         ? {
             [DeckMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-deck'), {
@@ -261,16 +283,15 @@ const main = async () => {
       [SettingsMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-settings')),
       [SketchMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-sketch')),
       [SpaceMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-space'), {
-        onFirstRun: async ({ personalSpaceFolder, dispatch }) => {
-          const { DocumentType, TextV0Type } = await import('@braneframe/types');
+        onFirstRun: async ({ client, dispatch }) => {
           const { create } = await import('@dxos/echo-schema');
-          const { fullyQualifiedId } = await import('@dxos/react-client/echo');
-          const content = create(TextV0Type, { content: INITIAL_CONTENT });
-          const document = create(DocumentType, { title: INITIAL_TITLE, content });
-          personalSpaceFolder.objects.push(document);
+          const personalSpaceCollection = client.spaces.default.properties[CollectionType.typename] as CollectionType;
+          const content = create(TextType, { content: INITIAL_CONTENT });
+          const document = create(DocumentType, { name: INITIAL_TITLE, content, threads: [] });
+          personalSpaceCollection?.objects.push(document);
           void dispatch({
             action: NavigationAction.OPEN,
-            data: { activeParts: { main: [fullyQualifiedId(document)] } },
+            data: { activeParts: { main: [client.spaces.default.id] } },
           });
         },
       }),
@@ -281,12 +302,13 @@ const main = async () => {
         appName: 'Composer',
       }),
       [ThreadMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-thread')),
+      [WelcomeMeta.id]: Plugin.lazy(() => import('./plugins/welcome')),
       [WildcardMeta.id]: Plugin.lazy(() => import('@braneframe/plugin-wildcard')),
     },
     core: [
       ...(isSocket ? [NativeMeta.id] : []),
       ...(!isSocket && isPwa ? [PwaMeta.id] : []),
-      BetaMeta.id,
+      AttentionMeta.id,
       ClientMeta.id,
       GraphMeta.id,
       HelpMeta.id,
@@ -299,6 +321,7 @@ const main = async () => {
       SpaceMeta.id,
       StatusBarMeta.id,
       ThemeMeta.id,
+      WelcomeMeta.id,
       WildcardMeta.id,
     ],
     defaults: [

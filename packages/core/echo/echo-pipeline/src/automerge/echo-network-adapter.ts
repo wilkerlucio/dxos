@@ -2,17 +2,31 @@
 // Copyright 2024 DXOS.org
 //
 
-import { Trigger, synchronized } from '@dxos/async';
-import { type Message, NetworkAdapter, type PeerId, type PeerMetadata } from '@dxos/automerge/automerge-repo';
+import { synchronized, Trigger } from '@dxos/async';
+import { NetworkAdapter, type Message, type PeerId, type PeerMetadata } from '@dxos/automerge/automerge-repo';
 import { LifecycleState } from '@dxos/context';
 import { invariant } from '@dxos/invariant';
 import { type PublicKey } from '@dxos/keys';
 import { log } from '@dxos/log';
+import { nonNullable } from '@dxos/util';
 
-import { type EchoReplicator, type ReplicatorConnection, type ShouldAdvertizeParams } from './echo-replicator';
+import {
+  type EchoReplicator,
+  type ReplicatorConnection,
+  type ShouldAdvertiseParams,
+  type ShouldSyncCollectionParams,
+} from './echo-replicator';
+import {
+  isCollectionQueryMessage,
+  isCollectionStateMessage,
+  type CollectionQueryMessage,
+  type CollectionStateMessage,
+} from './network-protocol';
 
 export type EchoNetworkAdapterParams = {
   getContainingSpaceForDocument: (documentId: string) => Promise<PublicKey | null>;
+  onCollectionStateQueried: (collectionId: string, peerId: PeerId) => void;
+  onCollectionStateReceived: (collectionId: string, peerId: PeerId, state: unknown) => void;
 };
 
 /**
@@ -57,7 +71,9 @@ export class EchoNetworkAdapter extends NetworkAdapter {
 
   @synchronized
   async open() {
-    invariant(this._lifecycleState === LifecycleState.CLOSED);
+    if (this._lifecycleState === LifecycleState.OPEN) {
+      return;
+    }
     this._lifecycleState = LifecycleState.OPEN;
 
     log('emit ready');
@@ -68,7 +84,9 @@ export class EchoNetworkAdapter extends NetworkAdapter {
 
   @synchronized
   async close() {
-    invariant(this._lifecycleState === LifecycleState.OPEN);
+    if (this._lifecycleState === LifecycleState.CLOSED) {
+      return this;
+    }
 
     for (const replicator of this._replicators) {
       await replicator.disconnect();
@@ -93,6 +111,7 @@ export class EchoNetworkAdapter extends NetworkAdapter {
       peerId: this.peerId,
       onConnectionOpen: this._onConnectionOpen.bind(this),
       onConnectionClosed: this._onConnectionClosed.bind(this),
+      onConnectionAuthScopeChanged: this._onConnectionAuthScopeChanged.bind(this),
       getContainingSpaceForDocument: this._params.getContainingSpaceForDocument,
     });
   }
@@ -101,18 +120,58 @@ export class EchoNetworkAdapter extends NetworkAdapter {
   async removeReplicator(replicator: EchoReplicator) {
     invariant(this._lifecycleState === LifecycleState.OPEN);
     invariant(this._replicators.has(replicator));
-    ('');
     await replicator.disconnect();
     this._replicators.delete(replicator);
   }
 
-  async shouldAdvertize(peerId: PeerId, params: ShouldAdvertizeParams): Promise<boolean> {
+  async shouldAdvertise(peerId: PeerId, params: ShouldAdvertiseParams): Promise<boolean> {
     const connection = this._connections.get(peerId);
     if (!connection) {
       return false;
     }
 
-    return connection.connection.shouldAdvertize(params);
+    return connection.connection.shouldAdvertise(params);
+  }
+
+  shouldSyncCollection(peerId: PeerId, params: ShouldSyncCollectionParams): boolean {
+    const connection = this._connections.get(peerId);
+    if (!connection) {
+      return false;
+    }
+
+    return connection.connection.shouldSyncCollection(params);
+  }
+
+  queryCollectionState(collectionId: string, targetId: PeerId): void {
+    const message: CollectionQueryMessage = {
+      type: 'collection-query',
+      senderId: this.peerId as PeerId,
+      targetId,
+      collectionId,
+    };
+    this.send(message);
+  }
+
+  sendCollectionState(collectionId: string, targetId: PeerId, state: unknown): void {
+    const message: CollectionStateMessage = {
+      type: 'collection-state',
+      senderId: this.peerId as PeerId,
+      targetId,
+      collectionId,
+      state,
+    };
+    this.send(message);
+  }
+
+  // TODO(dmaretskyi): Remove.
+  getPeersInterestedInCollection(collectionId: string): PeerId[] {
+    return Array.from(this._connections.values())
+      .map((connection) => {
+        return connection.connection.shouldSyncCollection({ collectionId })
+          ? (connection.connection.peerId as PeerId)
+          : null;
+      })
+      .filter(nonNullable);
   }
 
   private _onConnectionOpen(connection: ReplicatorConnection) {
@@ -132,7 +191,7 @@ export class EchoNetworkAdapter extends NetworkAdapter {
             break;
           }
 
-          this.emit('message', value);
+          this._onMessage(value);
         }
       } catch (err) {
         if (connectionEntry.isOpen) {
@@ -142,13 +201,29 @@ export class EchoNetworkAdapter extends NetworkAdapter {
     });
 
     log('emit peer-candidate', { peerId: connection.peerId });
-    this.emit('peer-candidate', {
-      peerId: connection.peerId as PeerId,
-      peerMetadata: {
-        // TODO(dmaretskyi): Refactor this.
-        dxos_peerSource: 'EchoNetworkAdapter',
-      } as any,
-    });
+    this._emitPeerCandidate(connection);
+  }
+
+  private _onMessage(message: Message) {
+    if (isCollectionQueryMessage(message)) {
+      this._params.onCollectionStateQueried(message.collectionId, message.senderId);
+    } else if (isCollectionStateMessage(message)) {
+      this._params.onCollectionStateReceived(message.collectionId, message.senderId, message.state);
+    } else {
+      this.emit('message', message);
+    }
+  }
+
+  /**
+   * Trigger doc-synchronizer shared documents set recalculation. Happens on peer-candidate.
+   * TODO(y): replace with a proper API call when sharePolicy update becomes supported by automerge-repo
+   */
+  private _onConnectionAuthScopeChanged(connection: ReplicatorConnection) {
+    log('Connection auth scope changed', { peerId: connection.peerId });
+    const entry = this._connections.get(connection.peerId as PeerId);
+    invariant(entry);
+    this.emit('peer-disconnected', { peerId: connection.peerId as PeerId });
+    this._emitPeerCandidate(connection);
   }
 
   private _onConnectionClosed(connection: ReplicatorConnection) {
@@ -164,6 +239,13 @@ export class EchoNetworkAdapter extends NetworkAdapter {
 
     this._connections.delete(connection.peerId as PeerId);
   }
+
+  private _emitPeerCandidate(connection: ReplicatorConnection) {
+    this.emit('peer-candidate', {
+      peerId: connection.peerId as PeerId,
+      peerMetadata: createEchoPeerMetadata(),
+    });
+  }
 }
 
 type ConnectionEntry = {
@@ -172,3 +254,12 @@ type ConnectionEntry = {
   writer: WritableStreamDefaultWriter<Message>;
   isOpen: boolean;
 };
+
+export const createEchoPeerMetadata = (): PeerMetadata =>
+  ({
+    // TODO(dmaretskyi): Refactor this.
+    dxos_peerSource: 'EchoNetworkAdapter',
+  }) as any;
+
+export const isEchoPeerMetadata = (metadata: PeerMetadata): boolean =>
+  (metadata as any)?.dxos_peerSource === 'EchoNetworkAdapter';

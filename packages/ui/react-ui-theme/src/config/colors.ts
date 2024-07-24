@@ -221,6 +221,10 @@ export const semanticColors = {
     light: physicalColors.neutral['500'],
     dark: physicalColors.neutral['400'],
   },
+  subdued: {
+    light: physicalColors.neutral['700'],
+    dark: physicalColors.neutral['300'],
+  },
   baseGlass: {
     light: `${physicalColors.neutral['12']}e0`,
     dark: `${physicalColors.neutral['850']}e0`,
@@ -264,7 +268,7 @@ export const semanticColors = {
   },
   separator: {
     light: physicalColors.neutral['75'],
-    dark: physicalColors.neutral['750'],
+    dark: physicalColors.neutral['700'],
   },
   inverse: {
     light: '#ffffff',

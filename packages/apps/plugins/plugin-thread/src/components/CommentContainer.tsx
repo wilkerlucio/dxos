@@ -2,16 +2,22 @@
 // Copyright 2023 DXOS.org
 //
 
-import { X } from '@phosphor-icons/react';
+import { CheckCircle, X } from '@phosphor-icons/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { MessageType, TextV0Type } from '@braneframe/types';
+import { MessageType } from '@braneframe/types';
 import { create } from '@dxos/echo-schema';
 import { getSpace, useMembers } from '@dxos/react-client/echo';
 import { useIdentity } from '@dxos/react-client/halo';
-import { Button, Tooltip, useThemeContext, useTranslation } from '@dxos/react-ui';
+import { Button, Tag, Tooltip, useThemeContext, useTranslation } from '@dxos/react-ui';
 import { createBasicExtensions, createThemeExtensions, listener } from '@dxos/react-ui-editor';
-import { hoverableControlItem, hoverableControls, hoverableFocusedWithinControls, mx } from '@dxos/react-ui-theme';
+import {
+  getSize,
+  hoverableControlItem,
+  hoverableControls,
+  hoverableFocusedWithinControls,
+  mx,
+} from '@dxos/react-ui-theme';
 import { MessageTextbox, type MessageTextboxProps, Thread, ThreadFooter, ThreadHeading } from '@dxos/react-ui-thread';
 import { nonNullable } from '@dxos/util';
 
@@ -22,6 +28,62 @@ import { useStatus } from '../hooks';
 import { THREAD_PLUGIN } from '../meta';
 import { getMessageMetadata } from '../util';
 
+const ToggleResolvedButton = ({
+  isResolved,
+  onResolve,
+}: {
+  isResolved: boolean | undefined;
+  onResolve: () => void;
+}) => {
+  const sizeClass = getSize(5);
+
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <Button
+          variant='ghost'
+          data-testid='thread.toggle-resolved'
+          onClick={onResolve}
+          classNames={['min-bs-0 p-1', !isResolved && hoverableControlItem]}
+        >
+          {isResolved ? <CheckCircle className={sizeClass} weight='fill' /> : <CheckCircle className={sizeClass} />}
+        </Button>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content classNames={'z-[21]'}>
+          {isResolved ? 'Mark as unresolved' : 'Mark as resolved'}
+          <Tooltip.Arrow />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+};
+
+const DeleteThreadButton = ({ onDelete }: { onDelete: () => void }) => {
+  const sizeClass = getSize(5);
+
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <Button
+          variant='ghost'
+          data-testid='thread.delete'
+          onClick={onDelete}
+          classNames={['min-bs-0 p-1', hoverableControlItem]}
+        >
+          <X className={sizeClass} />
+        </Button>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content classNames={'z-[21]'}>
+          Delete thread
+          <Tooltip.Arrow />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+};
+
 export const CommentContainer = ({
   thread,
   detached,
@@ -30,6 +92,8 @@ export const CommentContainer = ({
   autoFocusTextbox,
   onAttend,
   onDelete,
+  onResolve,
+  onComment,
 }: ThreadContainerProps) => {
   const identity = useIdentity()!;
   const space = getSpace(thread);
@@ -73,16 +137,13 @@ export const CommentContainer = ({
 
     thread.messages.push(
       create(MessageType, {
-        from: { identityKey: identity.identityKey.toHex() },
+        sender: { identityKey: identity.identityKey.toHex() },
+        timestamp: new Date().toISOString(),
+        text: messageRef.current,
         context,
-        blocks: [
-          {
-            timestamp: new Date().toISOString(),
-            content: create(TextV0Type, { content: messageRef.current }),
-          },
-        ],
       }),
     );
+    onComment?.(thread);
 
     messageRef.current = '';
     setAutoFocus(true);
@@ -93,14 +154,10 @@ export const CommentContainer = ({
     return true;
   }, [thread, identity]);
 
-  const handleDelete = (id: string, index: number) => {
+  const handleDelete = (id: string) => {
     const messageIndex = thread.messages.filter(nonNullable).findIndex((message) => message.id === id);
     if (messageIndex !== -1) {
-      const message = thread.messages[messageIndex];
-      message?.blocks.splice(index, 1);
-      if (message?.blocks.length === 0) {
-        thread.messages.splice(messageIndex, 1);
-      }
+      thread.messages.splice(messageIndex, 1);
       if (thread.messages.length === 0) {
         onDelete?.();
       }
@@ -120,28 +177,25 @@ export const CommentContainer = ({
         {detached ? (
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
-              <ThreadHeading detached>{thread.title ?? t('thread title placeholder')}</ThreadHeading>
+              <ThreadHeading detached>{thread.name ?? t('thread title placeholder')}</ThreadHeading>
             </Tooltip.Trigger>
             <Tooltip.Portal>
-              <Tooltip.Content classNames='z-[11]' side='top'>
+              <Tooltip.Content classNames='z-[21]' side='top'>
                 {t('detached thread label')}
                 <Tooltip.Arrow />
               </Tooltip.Content>
             </Tooltip.Portal>
           </Tooltip.Root>
         ) : (
-          <ThreadHeading>{thread.title ?? t('thread title placeholder')}</ThreadHeading>
+          <ThreadHeading>{thread.name ?? t('thread title placeholder')}</ThreadHeading>
         )}
-        {onDelete && (
-          <Button
-            variant='ghost'
-            data-testid='thread.delete'
-            onClick={onDelete}
-            classNames={['min-bs-0 p-1 mie-1', hoverableControlItem]}
-          >
-            <X />
-          </Button>
-        )}
+        <div className='flex flex-row items-center'>
+          {thread.status === 'staged' && <Tag palette='neutral'>DRAFT</Tag>}
+          {onResolve && !(thread?.status === 'staged') && (
+            <ToggleResolvedButton isResolved={thread?.status === 'resolved'} onResolve={onResolve} />
+          )}
+          {onDelete && <DeleteThreadButton onDelete={onDelete} />}
+        </div>
       </div>
       {thread.messages.filter(nonNullable).map((message) => (
         <MessageContainer key={message.id} message={message} members={members} onDelete={handleDelete} />

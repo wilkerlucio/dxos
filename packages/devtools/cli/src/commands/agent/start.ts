@@ -19,12 +19,12 @@ import {
   parseAddress,
 } from '@dxos/agent';
 import { asyncTimeout, runInContext, scheduleTaskInterval, Trigger } from '@dxos/async';
+import { AgentAlreadyRunningError } from '@dxos/cli-base';
 import { DX_RUNTIME, getProfilePath } from '@dxos/client-protocol';
 import { Context } from '@dxos/context';
 import { type Platform } from '@dxos/protocols/proto/dxos/client/services';
 
 import { BaseCommand } from '../../base';
-import { AgentAlreadyRunningError } from '../../errors';
 
 export default class Start extends BaseCommand<typeof Start> {
   static override enableJsonFlag = true;
@@ -178,8 +178,8 @@ export default class Start extends BaseCommand<typeof Start> {
     } else {
       if (this._observability?.enabled) {
         await this._observability.initialize();
-        await this._observability.setIdentityTags(this._agent.client!);
-        await this._observability.startNetworkMetrics(this._agent.client!);
+        await this._observability.setIdentityTags(this._agent.client!.services.services);
+        await this._observability.startNetworkMetrics(this._agent.client!.services.services);
         await this._observability.startSpacesMetrics(this._agent.client!, 'cli');
         await this._observability.startRuntimeMetrics(this._agent.client!);
         // initAgentMetrics(this._ctx, this._observability, this._startTime);

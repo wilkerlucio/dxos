@@ -25,7 +25,7 @@ export const Root = () => {
       createWorker={createWorker}
       shell='./shell.html'
       onInitialized={async (client) => {
-        client.addSchema(TodoListType, TodoType);
+        client.addTypes([TodoListType, TodoType]);
 
         const searchParams = new URLSearchParams(location.search);
         const deviceInvitationCode = searchParams.get('deviceInvitationCode');
@@ -39,7 +39,7 @@ export const Root = () => {
             space && navigate(generatePath('/:spaceKey', { spaceKey: space.key.toHex() }));
           });
         } else if (deviceInvitationCode) {
-          void client.shell.initializeIdentity({ invitationCode: deviceInvitationCode });
+          void client.shell.joinIdentity({ invitationCode: deviceInvitationCode });
         }
       }}
     >
