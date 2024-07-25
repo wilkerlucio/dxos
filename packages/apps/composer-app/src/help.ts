@@ -45,7 +45,7 @@ export const steps: Step[] = [
     before: ensureSidebar,
     target: '[data-testid="spacePlugin.createObject"]',
     title: 'Creating content',
-    content: 'Press (+) to add new content.',
+    content: 'Use the menu to create documents and other content.',
     placement: 'bottom',
   },
   {
