@@ -5,7 +5,7 @@
 import { Placeholder, Plus, Sidebar as MenuIcon } from '@phosphor-icons/react';
 import React, { Fragment, useEffect, useState } from 'react';
 
-import { type Node, useGraph } from '@braneframe/plugin-graph';
+import { ACTION_GROUP_TYPE, ACTION_TYPE, type Node, useGraph } from '@braneframe/plugin-graph';
 import {
   activeIds as getActiveIds,
   type ActiveParts,
@@ -273,7 +273,18 @@ export const DeckLayout = ({
   };
 
   const activeId = Array.from(attention.attended ?? [])[0];
-  const activeNode = activeId ? graph.findNode(activeId) : undefined;
+  const activeNode = useNode(graph, activeId);
+
+  useEffect(() => {
+    if (activeNode) {
+      const frame = requestAnimationFrame(async () => {
+        await graph.expand(activeNode, 'outbound', ACTION_GROUP_TYPE);
+        await graph.expand(activeNode, 'outbound', ACTION_TYPE);
+      });
+
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [activeNode]);
 
   return fullScreenAvailable ? (
     <div role='none' className={fixedInsetFlexLayout}>
