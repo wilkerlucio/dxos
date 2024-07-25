@@ -4,7 +4,8 @@ import type {
   EchoReplicator,
   EchoReplicatorContext,
   ReplicatorConnection,
-  ShouldAdvertizeParams,
+  ShouldAdvertiseParams,
+  ShouldSyncCollectionParams,
 } from '@dxos/echo-pipeline';
 import WebSocket from 'isomorphic-ws';
 import { log } from '@dxos/log';
@@ -99,7 +100,12 @@ class EdgeReplicatorConnection extends Resource implements ReplicatorConnection 
     return this._remotePeerId;
   }
 
-  async shouldAdvertize(params: ShouldAdvertizeParams): Promise<boolean> {
+  async shouldAdvertise(params: ShouldAdvertiseParams): Promise<boolean> {
+    // TODO(dmaretskyi): Think this through.
+    return true;
+  }
+
+  shouldSyncCollection(params: ShouldSyncCollectionParams): boolean {
     // TODO(dmaretskyi): Think this through.
     return true;
   }
@@ -145,7 +151,13 @@ class EdgeReplicatorConnection extends Resource implements ReplicatorConnection 
     invariant(binary instanceof Uint8Array);
 
     const message: Message = cbor.decode(binary);
-    log.info('recv', { type: message.type, senderId: message.senderId, targetId: message.targetId, documentId: message.documentId });
+    log.info('recv', {
+      type: message.type,
+      senderId: message.senderId,
+      targetId: message.targetId,
+      documentId: message.documentId,
+      data: message.data?.length,
+    });
     this._processMessage(message);
   };
 
@@ -191,7 +203,12 @@ class EdgeReplicatorConnection extends Resource implements ReplicatorConnection 
 
   private _sendMessage(message: Message) {
     invariant(this._socket, 'Not connected');
-    log.info('send', { type: message.type, senderId: message.senderId, targetId: message.targetId, documentId: message.documentId });
+    log.info('send', {
+      type: message.type,
+      senderId: message.senderId,
+      targetId: message.targetId,
+      documentId: message.documentId,
+    });
     const encoded = cbor.encode(message);
     this._socket.send(bufferToArray(encoded));
   }
