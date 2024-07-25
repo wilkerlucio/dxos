@@ -166,11 +166,11 @@ export class EchoHost extends Resource {
       void this._automergeHost.updateLocalCollectionState(deriveCollectionIdFromSpaceId(e.spaceId), e.documentIds);
     });
 
-    await this._automergeHost.addReplicator(this._meshEchoReplicator);
+    // await this._automergeHost.addReplicator(this._meshEchoReplicator);
   }
 
   protected override async _close(ctx: Context): Promise<void> {
-    await this._automergeHost.removeReplicator(this._meshEchoReplicator);
+    // await this._automergeHost.removeReplicator(this._meshEchoReplicator);
 
     await this._spaceStateManager.close();
     await this._queryService.close(ctx);

@@ -28,6 +28,8 @@ export class EchoEdgeReplicator implements EchoReplicator {
   }
 
   async connect(context: EchoReplicatorContext): Promise<void> {
+    log.info('connect', { peerId: context.peerId });
+
     this._connection = new EdgeReplicatorConnection({
       url: this._url,
       ownerPeerId: context.peerId,
