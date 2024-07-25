@@ -36,6 +36,36 @@ describe.only('edge integration', () => {
     expect(handle2.docSync().text).to.eq('hello');
   });
 
+  test('2 doc replication', async () => {
+    const host1 = await setupAutomergeHost();
+    const host2 = await setupAutomergeHost();
+
+    host1.addReplicator(
+      new EchoEdgeReplicator({
+        url: `ws://localhost:8787/replicate/00000000000`,
+      }),
+    );
+
+    host2.addReplicator(
+      new EchoEdgeReplicator({
+        url: `ws://localhost:8787/replicate/00000000000`,
+      }),
+    );
+
+    const handle1a = host1.createDoc({
+      text: 'hello',
+    });
+    const handle1b = host1.createDoc({
+      text: 'world',
+    });
+
+    const handle2a = await host2.loadDoc(Context.default(), handle1a.documentId);
+    expect(handle2a.docSync().text).to.eq('hello');
+
+    const handle2b = await host2.loadDoc(Context.default(), handle1b.documentId);
+    expect(handle2b.docSync().text).to.eq('world');
+  });
+
   test.only('database replication', async () => {
     await using builder = await new EchoTestBuilder().open();
 
