@@ -9,7 +9,7 @@
       "executor": "@nx-go/nx-go:build",
       "options": {
         "main": "{projectRoot}/",
-        "outputPath": "{projectRoot}/bin/protoc-gen-go-dxrpc"
+        "outputPath": "{workspaceRoot}/node_modules/.bin/protoc-gen-go-dxrpc"
       }
     },
     "serve": {
