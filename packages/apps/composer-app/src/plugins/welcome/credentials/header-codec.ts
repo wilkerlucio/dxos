@@ -59,6 +59,7 @@ export class HeaderCodec<Key> {
       if (value instanceof Date) {
         return encodeDate(value);
       }
+
       return null;
     });
   }
