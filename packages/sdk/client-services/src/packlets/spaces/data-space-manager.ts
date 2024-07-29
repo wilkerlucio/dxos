@@ -398,7 +398,7 @@ export class DataSpaceManager {
             if (!session.isOpen) {
               return;
             }
-            session.addExtension('dxos.mesh.teleport.automerge', this._echoHost.createReplicationExtension());
+            // session.addExtension('dxos.mesh.teleport.automerge', this._echoHost.createReplicationExtension());
           } catch (err: any) {
             log.warn('error on authorized connection', { err });
             await session.close(err);
