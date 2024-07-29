@@ -28,6 +28,7 @@ import {
   TextV0Type,
   waitForSpace,
 } from '../testing';
+import { Config } from '@dxos/config';
 
 describe('Spaces', () => {
   test('creates a default space', async () => {
@@ -449,6 +450,32 @@ describe('Spaces', () => {
     await space.internal.createEpoch({ migration: CreateEpochRequest.Migration.PRUNE_AUTOMERGE_ROOT_HISTORY });
     const epochs = await space.internal.getEpochs();
     expect(epochs.length).to.eq(2);
+  });
+
+  test.only('edge', async () => {
+    const [host, guest] = await createInitializedClients(2, {
+      config: new Config({
+        runtime: {
+          client: {
+            edgeEndpoint: 'ws://localhost:8787',
+          },
+        },
+      }),
+    });
+
+    [host, guest].forEach(registerTypes);
+
+    const [hostSpace, guestSpace] = await createSharedSpace(host, guest);
+
+    const hostDocument = hostSpace.db.add(createDocument());
+    await hostSpace.db.flush();
+    await waitForObject(guestSpace, hostDocument);
+
+    (hostDocument.content as any).content = 'Hello, world!';
+
+    await waitForExpect(() => {
+      expect(getDocumentText(guestSpace, hostDocument.id)).to.equal('Hello, world!');
+    });
   });
 
   const createInitializedClients = async (
