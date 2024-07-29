@@ -140,6 +140,8 @@ message Runtime {
 
     /// Spaces will stay in SpaceState.CLOSED until explicitly opened. Speeds up client-services initialization.
     optional bool lazy_space_open = 9;
+
+    optional string edge_endpoint = 10;
   }
 
   message App {

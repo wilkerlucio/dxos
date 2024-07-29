@@ -7,7 +7,7 @@ import { Context, Resource } from '@dxos/context';
 import { getCredentialAssertion, type CredentialProcessor } from '@dxos/credentials';
 import { failUndefined } from '@dxos/debug';
 import { EchoEdgeReplicator, EchoHost } from '@dxos/echo-db';
-import { MetadataStore, SnapshotStore, SpaceManager, valueEncoding } from '@dxos/echo-pipeline';
+import { MetadataStore, SnapshotStore, SpaceManager, valueEncoding, type EchoReplicator } from '@dxos/echo-pipeline';
 import { FeedFactory, FeedStore } from '@dxos/feed-store';
 import { invariant } from '@dxos/invariant';
 import { Keyring } from '@dxos/keyring';
@@ -83,6 +83,7 @@ export class ServiceContext extends Resource {
     public readonly level: LevelDB,
     public readonly networkManager: SwarmNetworkManager,
     public readonly signalManager: SignalManager,
+    public readonly echoReplicators: EchoReplicator[],
     public readonly _runtimeParams?: ServiceContextRuntimeParams,
   ) {
     super();
@@ -152,13 +153,9 @@ export class ServiceContext extends Resource {
     await this.networkManager.open();
 
     await this.echoHost.open(ctx);
-    await this.echoHost.addReplicator(
-      new EchoEdgeReplicator({
-        // url: `ws://edge-db.dxos.workers.dev/replicate/00000000000`,
-        url: `ws://localhost:8787/replicate/00000000001`,
-      }),
-    );
-
+    for (const replicator of this.echoReplicators) {
+      await this.echoHost.addReplicator(replicator);
+    }
     await this.metadataStore.load();
     await this.spaceManager.open();
     await this.identityManager.open(ctx);

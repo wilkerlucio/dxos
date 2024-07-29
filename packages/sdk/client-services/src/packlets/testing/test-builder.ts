@@ -51,7 +51,7 @@ export const createServiceContext = async ({
   const level = createTestLevel();
   await level.open();
 
-  return new ServiceContext(storage, level, networkManager, signalManager, {
+  return new ServiceContext(storage, level, networkManager, signalManager, [], {
     invitationConnectionDefaultParams: { controlHeartbeatInterval: 200 },
     ...runtimeParams,
   });

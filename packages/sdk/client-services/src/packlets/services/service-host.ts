@@ -36,6 +36,7 @@ import { NetworkServiceImpl } from '../network';
 import { SpacesServiceImpl } from '../spaces';
 import { createLevel, createStorageObjects } from '../storage';
 import { SystemServiceImpl } from '../system';
+import { EchoEdgeReplicator } from '@dxos/echo-db';
 
 export type ClientServicesHostParams = {
   /**
@@ -244,11 +245,14 @@ export class ClientServicesHost {
 
     await this._loggingService.open();
 
+    const edgeEndpoint = this._config.get('runtime.client.edgeEndpoint');
+
     this._serviceContext = new ServiceContext(
       this._storage,
       this._level,
       this._networkManager,
       this._signalManager,
+      edgeEndpoint ? [new EchoEdgeReplicator({ url: `${edgeEndpoint}/replicate/1111111` })] : [],
       this._runtimeParams,
     );
 
