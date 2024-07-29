@@ -11,6 +11,7 @@ runtime:
     storage:
       persistent: true
       dataStore: 1
+    edgeEndpoint: ws://localhost:8787
   services:
     signaling:
       - server: wss://kube.dxos.org/.well-known/dx/signal
