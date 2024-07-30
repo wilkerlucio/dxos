@@ -28,8 +28,9 @@ import {
   parseMetadataResolverPlugin,
   resolvePlugin,
   parseGraphPlugin,
+  isIdActive,
 } from '@dxos/app-framework';
-import { EventSubscriptions, type UnsubscribeCallback } from '@dxos/async';
+import { EventSubscriptions, type Trigger, type UnsubscribeCallback } from '@dxos/async';
 import { type Identifiable, isReactiveObject, type EchoReactiveObject } from '@dxos/echo-schema';
 import { invariant } from '@dxos/invariant';
 import { LocalStorageStore } from '@dxos/local-storage';
@@ -62,7 +63,6 @@ import {
   EmptyTree,
   MenuFooter,
   MissingObject,
-  PopoverRemoveObject,
   PopoverRenameObject,
   PopoverRenameSpace,
   ShareSpaceButton,
@@ -95,6 +95,14 @@ export const parseSpacePlugin = (plugin?: Plugin) =>
 
 export type SpacePluginOptions = {
   /**
+   * Fired when first run logic should be executed.
+   *
+   * This trigger is invoked once the HALO identity is created but must only be run in one instance of the application.
+   * As such it cannot depend directly on the HALO identity event.
+   */
+  firstRun?: Trigger<void>;
+
+  /**
    * Root collection structure is created on application first run if it does not yet exist.
    * This callback is invoked immediately following the creation of the root collection structure.
    *
@@ -104,7 +112,10 @@ export type SpacePluginOptions = {
   onFirstRun?: (params: { client: Client; dispatch: IntentDispatcher }) => Promise<void>;
 };
 
-export const SpacePlugin = ({ onFirstRun }: SpacePluginOptions = {}): PluginDefinition<SpacePluginProvides> => {
+export const SpacePlugin = ({
+  firstRun,
+  onFirstRun,
+}: SpacePluginOptions = {}): PluginDefinition<SpacePluginProvides> => {
   const settings = new LocalStorageStore<SpaceSettingsProps>(SPACE_PLUGIN);
   const state = new LocalStorageStore<PluginState>(SPACE_PLUGIN, {
     awaiting: undefined,
@@ -122,29 +133,16 @@ export const SpacePlugin = ({ onFirstRun }: SpacePluginOptions = {}): PluginDefi
   let intentPlugin: Plugin<IntentPluginProvides> | undefined;
   let navigationPlugin: Plugin<LocationProvides> | undefined;
   let attentionPlugin: Plugin<AttentionPluginProvides> | undefined;
-  let firstRun = false;
 
   const onSpaceReady = async () => {
-    if (!clientPlugin || !navigationPlugin || !intentPlugin || !attentionPlugin) {
+    if (!clientPlugin || !navigationPlugin || !attentionPlugin) {
       return;
     }
 
     const client = clientPlugin.provides.client;
     const location = navigationPlugin.provides.location;
-    const dispatch = intentPlugin.provides.intent.dispatch;
     const attention = attentionPlugin.provides.attention;
     const defaultSpace = client.spaces.default;
-    await defaultSpace.waitUntilReady();
-
-    // Create root collection structure.
-    if (firstRun) {
-      const personalSpaceCollection = create(CollectionType, { objects: [], views: {} });
-      defaultSpace.properties[CollectionType.typename] = personalSpaceCollection;
-      if (Migrations.versionProperty) {
-        defaultSpace.properties[Migrations.versionProperty] = Migrations.targetVersion;
-      }
-      await onFirstRun?.({ client, dispatch });
-    }
 
     // Initialize space sharing lock in default space.
     if (typeof defaultSpace.properties[COMPOSER_SPACE_LOCK] !== 'boolean') {
@@ -153,19 +151,19 @@ export const SpacePlugin = ({ onFirstRun }: SpacePluginOptions = {}): PluginDefi
 
     const {
       objects: [spacesOrder],
-    } = await client.spaces.default.db.query(Filter.schema(Expando, { key: SHARED })).run();
+    } = await defaultSpace.db.query(Filter.schema(Expando, { key: SHARED })).run();
     if (!spacesOrder) {
       // TODO(wittjosiah): Cannot be a Folder because Spaces are not TypedObjects so can't be saved in the database.
       //  Instead, we store order as an array of space ids.
-      client.spaces.default.db.add(create({ key: SHARED, order: [] }));
+      defaultSpace.db.add(create({ key: SHARED, order: [] }));
     }
 
     // Cache space names.
     subscriptions.add(
       client.spaces.subscribe(async (spaces) => {
         // TODO(wittjosiah): Remove. This is a hack to be able to migrate the default space properties.
-        if (client.spaces.default.state.get() === SpaceState.SPACE_REQUIRES_MIGRATION) {
-          await client.spaces.default.internal.migrate();
+        if (defaultSpace.state.get() === SpaceState.SPACE_REQUIRES_MIGRATION) {
+          await defaultSpace.internal.migrate();
         }
 
         spaces
@@ -289,17 +287,40 @@ export const SpacePlugin = ({ onFirstRun }: SpacePluginOptions = {}): PluginDefi
         type: LocalStorageStore.json<Record<string, string>>(),
       });
 
-      intentPlugin = resolvePlugin(plugins, parseIntentPlugin);
       navigationPlugin = resolvePlugin(plugins, parseNavigationPlugin);
-      clientPlugin = resolvePlugin(plugins, parseClientPlugin);
       attentionPlugin = resolvePlugin(plugins, parseAttentionPlugin);
+      clientPlugin = resolvePlugin(plugins, parseClientPlugin);
+      intentPlugin = resolvePlugin(plugins, parseIntentPlugin);
+      if (!clientPlugin || !intentPlugin) {
+        return;
+      }
 
-      // TODO(wittjosiah): Ideally this would be per app rather than per identity.
-      firstRun = clientPlugin ? !clientPlugin.provides.client.halo.identity.get() : false;
+      const client = clientPlugin.provides.client;
+      const dispatch = intentPlugin.provides.intent.dispatch;
+
+      const handleFirstRun = async () => {
+        const defaultSpace = client.spaces.default;
+
+        // Create root collection structure.
+        const personalSpaceCollection = create(CollectionType, { objects: [], views: {} });
+        defaultSpace.properties[CollectionType.typename] = personalSpaceCollection;
+        if (Migrations.versionProperty) {
+          defaultSpace.properties[Migrations.versionProperty] = Migrations.targetVersion;
+        }
+        await onFirstRun?.({ client, dispatch });
+      };
 
       // No need to unsubscribe because this observable completes when spaces are ready.
-      clientPlugin?.provides.client.spaces.isReady.subscribe(async (ready) => {
+      client.spaces.isReady.subscribe(async (ready) => {
         if (ready) {
+          await clientPlugin?.provides.client.spaces.default.waitUntilReady();
+
+          if (firstRun) {
+            void firstRun?.wait().then(handleFirstRun);
+          } else {
+            await handleFirstRun();
+          }
+
           await onSpaceReady();
         }
       });
@@ -366,26 +387,11 @@ export const SpacePlugin = ({ onFirstRun }: SpacePluginOptions = {}): PluginDefi
             case 'popover':
               if (data.component === 'dxos.org/plugin/space/RenameSpacePopover' && isSpace(data.subject)) {
                 return <PopoverRenameSpace space={data.subject} />;
-              } else if (
-                data.component === 'dxos.org/plugin/space/RenameObjectPopover' &&
-                isReactiveObject(data.subject)
-              ) {
-                return <PopoverRenameObject object={data.subject} />;
-              } else if (
-                data.component === 'dxos.org/plugin/space/RemoveObjectPopover' &&
-                data.subject &&
-                typeof data.subject === 'object' &&
-                isReactiveObject((data.subject as Record<string, any>)?.object)
-              ) {
-                return (
-                  <PopoverRemoveObject
-                    object={(data.subject as Record<string, any>)?.object}
-                    collection={(data.subject as Record<string, any>)?.collection}
-                  />
-                );
-              } else {
-                return null;
               }
+              if (data.component === 'dxos.org/plugin/space/RenameObjectPopover' && isReactiveObject(data.subject)) {
+                return <PopoverRenameObject object={data.subject} />;
+              }
+              return null;
             case 'presence--glyph': {
               return isReactiveObject(data.object) ? (
                 <SmallPresenceLive
@@ -568,12 +574,12 @@ export const SpacePlugin = ({ onFirstRun }: SpacePluginOptions = {}): PluginDefi
                   () => client.spaces.get(),
                 );
 
-                const [spacesOrder] = memoizeQuery(client.spaces.default, Filter.schema(Expando, { key: SHARED }));
-                if (!spaces || !spacesOrder) {
+                if (!spaces) {
                   return;
                 }
 
-                const order: string[] = spacesOrder.order ?? [];
+                const [spacesOrder] = memoizeQuery(client.spaces.default, Filter.schema(Expando, { key: SHARED }));
+                const order: string[] = spacesOrder?.order ?? [];
                 const orderMap = new Map(order.map((id, index) => [id, index]));
                 return [
                   ...spaces
@@ -1012,28 +1018,94 @@ export const SpacePlugin = ({ onFirstRun }: SpacePluginOptions = {}): PluginDefi
 
             case SpaceAction.REMOVE_OBJECT: {
               const object = intent.data?.object ?? intent.data?.result;
-              const caller = intent.data?.caller;
-              if (isReactiveObject(object) && caller) {
-                return {
-                  intents: [
-                    [
-                      {
-                        action: LayoutAction.SET_LAYOUT,
-                        data: {
-                          element: 'popover',
-                          anchorId: `dxos.org/ui/${caller}/${fullyQualifiedId(object)}`,
-                          component: 'dxos.org/plugin/space/RemoveObjectPopover',
-                          subject: {
-                            object,
-                            collection: intent.data?.collection,
-                          },
-                        },
-                      },
-                    ],
-                  ],
-                };
+              const space = getSpace(object);
+              if (!(isReactiveObject(object) && space)) {
+                return;
               }
-              break;
+
+              const objectId = fullyQualifiedId(object);
+              const parentCollection = intent.data?.collection ?? space.properties[CollectionType.typename];
+
+              if (!intent.undo) {
+                // Capture the current state for undo
+                const deletionData = {
+                  object,
+                  parentCollection,
+                  index:
+                    parentCollection instanceof CollectionType
+                      ? parentCollection.objects.indexOf(object as Expando)
+                      : -1,
+                  nestedObjects: object instanceof CollectionType ? [...object.objects] : [],
+                  wasActive: isIdActive(navigationPlugin?.provides.location.active, objectId),
+                };
+
+                // If the item is active, navigate to "nowhere" to avoid navigating to a removed item.
+                if (deletionData.wasActive) {
+                  await intentPlugin?.provides.intent.dispatch({
+                    action: NavigationAction.CLOSE,
+                    data: { activeParts: { main: [objectId], sidebar: [objectId], complementary: [objectId] } },
+                  });
+                }
+
+                if (parentCollection instanceof CollectionType) {
+                  // TODO(Zan): Is there a nicer way to do this without casting to Expando?
+                  const index = parentCollection.objects.indexOf(object as Expando);
+                  if (index !== -1) {
+                    parentCollection.objects.splice(index, 1);
+                  }
+                }
+
+                // If the object is a collection, move the objects inside of it to the collection above it.
+                if (object instanceof CollectionType && parentCollection instanceof CollectionType) {
+                  object.objects.forEach((obj) => {
+                    if (!parentCollection.objects.includes(obj)) {
+                      parentCollection.objects.push(obj);
+                    }
+                  });
+                }
+
+                space.db.remove(object as any);
+
+                const undoMessageKey =
+                  object instanceof CollectionType ? 'collection deleted label' : 'object deleted label';
+
+                return {
+                  data: true,
+                  undoable: {
+                    message: translations[0]['en-US'][SPACE_PLUGIN][undoMessageKey], // Consider using a translation key here
+                    data: deletionData,
+                  },
+                };
+              } else {
+                const undoData = intent.data;
+                if (undoData && undoData.object && undoData.parentCollection) {
+                  // Restore the object to the space
+                  const restoredObject = space.db.add(undoData.object as any);
+
+                  // Restore the object to its original position in the collection
+                  if (undoData.parentCollection instanceof CollectionType && undoData.index !== -1) {
+                    undoData.parentCollection.objects.splice(undoData.index, 0, restoredObject as Expando);
+                  }
+
+                  // Delete nested objects that were hoisted to the parent collection
+                  if (undoData.object instanceof CollectionType) {
+                    undoData.nestedObjects.forEach((obj: Expando) => {
+                      undoData.parentCollection.objects.splice(undoData.parentCollection.objects.indexOf(obj), 1);
+                    });
+                  }
+
+                  // Restore active state if it was active before removal
+                  if (undoData.wasActive) {
+                    await intentPlugin?.provides.intent.dispatch({
+                      action: NavigationAction.ADD_TO_ACTIVE,
+                      data: { id: fullyQualifiedId(restoredObject) },
+                    });
+                  }
+
+                  return { data: true };
+                }
+                return { data: false };
+              }
             }
 
             case SpaceAction.RENAME_OBJECT: {

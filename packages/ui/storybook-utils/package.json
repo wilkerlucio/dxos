@@ -1,14 +1,22 @@
 {
   "name": "@dxos/storybook-utils",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "private": true,
   "description": "Utilities for DXOS UI Storybooks.",
   "homepage": "https://dxos.org",
   "bugs": "https://github.com/dxos/dxos/issues",
   "license": "MIT",
   "author": "DXOS.org",
-  "main": "dist/lib/browser/index.mjs",
+  "exports": {
+    ".": {
+      "browser": "./dist/lib/browser/index.mjs",
+      "types": "./dist/types/src/index.d.ts"
+    }
+  },
   "types": "dist/types/src/index.d.ts",
+  "typesVersions": {
+    "*": {}
+  },
   "files": [
     "dist",
     "src"

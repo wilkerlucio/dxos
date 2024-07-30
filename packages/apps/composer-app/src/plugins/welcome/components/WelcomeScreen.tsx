@@ -7,15 +7,17 @@ import React, { useRef, useState } from 'react';
 import { ClientAction } from '@braneframe/plugin-client/meta';
 import { SpaceAction } from '@braneframe/plugin-space/meta';
 import { NavigationAction, useIntentDispatcher } from '@dxos/app-framework';
+import { type Trigger } from '@dxos/async';
 import { log } from '@dxos/log';
 import { PublicKey, useClient } from '@dxos/react-client';
 import { isSpace } from '@dxos/react-client/echo';
-import { useIdentity } from '@dxos/react-client/halo';
+import { type Identity, useIdentity } from '@dxos/react-client/halo';
 
 import { Welcome, WelcomeState } from './Welcome';
 import { removeQueryParamByValue } from '../../../util';
+import { activateAccount } from '../credentials';
 
-export const WelcomeScreen = ({ hubUrl }: { hubUrl: string }) => {
+export const WelcomeScreen = ({ hubUrl, firstRun }: { hubUrl: string; firstRun?: Trigger }) => {
   const client = useClient();
   const identity = useIdentity();
   const dispatch = useIntentDispatcher();
@@ -42,14 +44,17 @@ export const WelcomeScreen = ({ hubUrl }: { hubUrl: string }) => {
       const url = new URL('/account/signup', hubUrl);
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      const { link } = await response.json();
-      if (link) {
-        log.info('magic link', { link });
+
+      const { token } = await response.json();
+      if (token) {
+        // Debugging link.
+        const activationLink = new URL('/', window.location.href);
+        activationLink.searchParams.set('token', token);
+        // eslint-disable-next-line
+        console.log(activationLink.href);
       }
 
       setState(WelcomeState.EMAIL_SENT);
@@ -66,11 +71,14 @@ export const WelcomeScreen = ({ hubUrl }: { hubUrl: string }) => {
   };
 
   const handleSpaceInvitation = async () => {
-    const result = await dispatch([
-      { action: ClientAction.CREATE_IDENTITY },
-      { action: SpaceAction.JOIN, data: { invitationCode: spaceInvitationCode } },
-    ]);
+    const identityResult = await dispatch({ action: ClientAction.CREATE_IDENTITY });
+    const identity = identityResult?.data as Identity | undefined;
+    if (!identity) {
+      return;
+    }
 
+    firstRun?.wake();
+    const result = await dispatch({ action: SpaceAction.JOIN, data: { invitationCode: spaceInvitationCode } });
     spaceInvitationCode && removeQueryParamByValue(spaceInvitationCode);
 
     if (isSpace(result?.data.space)) {
@@ -84,8 +92,12 @@ export const WelcomeScreen = ({ hubUrl }: { hubUrl: string }) => {
         return spaceKey instanceof PublicKey && spaceKey.equals(space.key);
       });
 
-      // TODO(wittjosiah): Post space credential to hub.
-      log.info('spaceCredential', spaceCredential);
+      if (spaceCredential) {
+        await activateAccount({ hubUrl, identity, referrer: spaceCredential.issuer });
+      } else {
+        // Log but continue so as not to block access to composer due to unexpected error.
+        log.error('space credential not found', { spaceId: space.id });
+      }
 
       await dispatch([
         {

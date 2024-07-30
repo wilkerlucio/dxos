@@ -57,12 +57,25 @@ test.describe('Comments tests', () => {
     await Markdown.select(editorTextbox, editorText);
     await Thread.createComment(host.page, plank.locator, messageText);
     const thread = Thread.getThread(host.page, editorText);
-    const message = Thread.getMessage(thread, messageText).getByRole('textbox');
-    await expect(message).toContainText(messageText);
+    const message = Thread.getMessage(thread, messageText);
+    const messageTextbox = message.getByRole('textbox');
+
+    await expect(messageTextbox).toContainText(messageText);
+
+    const editButton = host.page.getByTestId('thread.message.edit');
+    await editButton.click();
 
     const editedText = 'Edited';
-    await message.fill('');
-    await message.fill(editedText);
+
+    // NOTE(Zan): The input is autofocused, so we need to clear the text content and
+    // type the new text instead of using `fill`.
+    await host.page.keyboard.press('ControlOrMeta+A');
+    await host.page.keyboard.press('Backspace');
+    await host.page.keyboard.type(editedText);
+
+    const saveEditButton = host.page.getByTestId('thread.message.save');
+    await saveEditButton.click();
+
     const editedMessage = Thread.getMessage(thread, editedText).getByRole('textbox');
     await expect(editedMessage).toContainText(editedText);
   });
@@ -103,7 +116,6 @@ test.describe('Comments tests', () => {
   });
 
   test('delete thread', async () => {
-    await host.closeToast();
     await host.createSpace();
     const newSpacePlank = host.deck.plank(0);
     await newSpacePlank.close();
@@ -128,7 +140,6 @@ test.describe('Comments tests', () => {
   });
 
   test('undo delete thread', async () => {
-    await host.closeToast();
     await host.createSpace();
     const newSpacePlank = host.deck.plank(0);
     await newSpacePlank.close();
