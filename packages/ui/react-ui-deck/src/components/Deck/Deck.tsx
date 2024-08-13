@@ -2,7 +2,7 @@
 // Copyright 2024 DXOS.org
 //
 
-import { useFocusFinders } from '@fluentui/react-tabster';
+import { useArrowNavigationGroup, useFocusableGroup, useFocusFinders } from '@fluentui/react-tabster';
 import { useComposedRefs } from '@radix-ui/react-compose-refs';
 import { createContext } from '@radix-ui/react-context';
 import { Slot } from '@radix-ui/react-slot';
@@ -58,10 +58,12 @@ const resizeButtonStyles = (...etc: ClassNameValue[]) =>
 const DeckRoot = forwardRef<HTMLDivElement, DeckRootProps>(
   ({ classNames, children, asChild, overscroll, solo, ...props }, forwardedRef) => {
     const Root = asChild ? Slot : 'div';
+    const arrowGroupAttrs = useArrowNavigationGroup({ axis: 'horizontal', circular: true, memorizeCurrent: true });
     return (
       <DeckProvider overscroll={overscroll} solo={solo}>
         <Root
           {...props}
+          {...arrowGroupAttrs}
           style={{ ...props.style, containerType: 'inline-size' }} // TODO(Zan): We should have a class for this?
           className={mx(deckLayout, classNames, solo ? 'overflow-x-hidden' : 'overflow-x-auto')}
           ref={forwardedRef}
@@ -106,6 +108,7 @@ const DeckPlankContent = forwardRef<HTMLDivElement, DeckPlankProps>(
     const articleElement = useRef<HTMLDivElement | null>(null);
     const ref = useComposedRefs(articleElement, forwardedRef);
     const { findFirstFocusable } = useFocusFinders();
+    const focusableGroupAttrs = useFocusableGroup();
 
     const { unit = 'rem', size = defaults.size, boundary } = usePlankContext('DeckPlankContent');
     const { overscroll, solo } = useDeckContext('DeckPlankContent');
@@ -127,12 +130,17 @@ const DeckPlankContent = forwardRef<HTMLDivElement, DeckPlankProps>(
     return (
       <article
         {...props}
+        {...focusableGroupAttrs}
+        tabIndex={0}
         style={{
           inlineSize,
           ...(shouldOverscroll ? { marginLeft: overscrollAmount } : {}),
           ...style,
         }}
-        className={mx('snap-normal snap-start grid row-span-3 grid-rows-subgrid group', classNames)}
+        className={mx(
+          'snap-normal snap-start grid row-span-3 grid-rows-subgrid group relative after:absolute after:pointer-events-none after:z-10 after:inset-0 focus-visible:after:ring-2 focus:outline-none focus-visible:hover:outline-none dark:focus-visible:hover:outline-none after:ring-inset after:ring-offset-0 after:ring-primary-350 after:ring-offset-white dark:after:ring-primary-450 dark:after:ring-offset-black',
+          classNames,
+        )}
         ref={ref}
         data-testid='deck.plank'
       >
