@@ -4,22 +4,24 @@
 
 import '@dxosTheme';
 
-import '@preact/signals-react';
+import { effect, type Signal, useSignal } from '@preact/signals-react';
 import React, { useEffect, useState } from 'react';
 
 import { TextType } from '@braneframe/types';
 import { Repo } from '@dxos/automerge/automerge-repo';
 import { BroadcastChannelNetworkAdapter } from '@dxos/automerge/automerge-repo-network-broadcastchannel';
 import { create, type Expando } from '@dxos/echo-schema';
-import { type PublicKey } from '@dxos/keys';
+import { PublicKey } from '@dxos/keys';
 import { Filter, DocAccessor, createDocAccessor, useSpace, useQuery, type Space } from '@dxos/react-client/echo';
 import { useIdentity, type Identity } from '@dxos/react-client/halo';
 import { ClientRepeater } from '@dxos/react-client/testing';
 import { useThemeContext } from '@dxos/react-ui';
 import { withTheme } from '@dxos/storybook-utils';
 
+import { type Comment } from '../../extensions';
 import { useTextEditor } from '../../hooks';
 import translations from '../../translations';
+import { comments, createExternalCommentSync } from '../comments';
 import { createBasicExtensions, createDataExtensions, createThemeExtensions } from '../factories';
 
 const initialContent = 'Hello world!';
@@ -30,12 +32,13 @@ type TestObject = {
 
 type EditorProps = {
   source: DocAccessor;
+  comments?: Signal<Comment[]>;
   autoFocus?: boolean;
   space?: Space;
   identity?: Identity;
 };
 
-const Editor = ({ source, autoFocus, space, identity }: EditorProps) => {
+const Editor = ({ source, comments: _comments, autoFocus, space, identity }: EditorProps) => {
   const { themeMode } = useThemeContext();
   const { parentRef } = useTextEditor(
     () => ({
@@ -51,6 +54,36 @@ const Editor = ({ source, autoFocus, space, identity }: EditorProps) => {
           },
         }),
         createDataExtensions({ id: 'test', text: source, space, identity }),
+        ...(_comments
+          ? [
+              createExternalCommentSync(
+                'test',
+                (sink) => effect(() => sink()),
+                () => _comments.value,
+              ),
+              comments({
+                id: 'test',
+                onCreate: ({ cursor }) => {
+                  const id = PublicKey.random().toHex();
+                  _comments.value = [..._comments.value, { id, cursor }];
+                  return id;
+                },
+                onSelect: (state) => {
+                  const debug = false;
+                  if (debug) {
+                    console.log(
+                      'update',
+                      JSON.stringify({
+                        comments: state.comments.length,
+                        active: state.selection.current?.slice(0, 8),
+                        closest: state.selection.closest?.slice(0, 8),
+                      }),
+                    );
+                  }
+                },
+              }),
+            ]
+          : []),
       ],
       autoFocus,
     }),
@@ -63,6 +96,7 @@ const Editor = ({ source, autoFocus, space, identity }: EditorProps) => {
 const Story = () => {
   const [object1, setObject1] = useState<DocAccessor<TestObject>>();
   const [object2, setObject2] = useState<DocAccessor<TestObject>>();
+  const _comments = useSignal<Comment[]>([]);
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -88,8 +122,8 @@ const Story = () => {
 
   return (
     <div role='none' className='grid grid-cols-2 bs-full is-full divide-x divide-neutral-500'>
-      <Editor source={object1} autoFocus />
-      <Editor source={object2} />
+      <Editor source={object1} comments={_comments} autoFocus />
+      <Editor source={object2} comments={_comments} />
     </div>
   );
 };
