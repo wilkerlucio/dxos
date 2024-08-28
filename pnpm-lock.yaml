@@ -11983,8 +11983,8 @@ importers:
         specifier: ~18.2.0
         version: 18.2.0
       unzip-stream:
-        specifier: ^0.3.1
-        version: 0.3.1
+        specifier: ^0.3.2
+        version: 0.3.2
       yargs:
         specifier: ~16.2.0
         version: 16.2.0
@@ -53139,8 +53139,8 @@ packages:
     engines: {node: '>=0.10'}
     dev: false
 
-  /unzip-stream@0.3.1:
-    resolution: {integrity: sha512-RzaGXLNt+CW+T41h1zl6pGz3EaeVhYlK+rdAap+7DxW5kqsqePO8kRtWPaCiVqdhZc86EctSPVYNix30YOMzmw==}
+  /unzip-stream@0.3.2:
+    resolution: {integrity: sha512-oWhfqwjx36ULFG+krfkbtbrc/BeEzaYrlqdEWa5EPNd6x6RerzuNW8aSTM0TtNtrOfUKYdO0TwrlkzrXAE6Olg==}
     dependencies:
       binary: 0.3.0
       mkdirp: 0.5.6
