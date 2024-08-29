@@ -10,7 +10,7 @@ export default template.define.text({
     Run the app with \`npm\`:
     \`\`\`bash
     npm install
-    npm run dev
+    npm run serve
     \`\`\`
 
     > Warning: pnpm is not supported for now, please use npm. (issue locating css in node_modules).
